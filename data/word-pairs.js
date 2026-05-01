@@ -1,4 +1,126 @@
-export const wordPairs = [
+export const friendlyPairs = [
+  // 语文 / 文学
+  { civilian: "铅笔", spy: "钢笔" },
+  { civilian: "课本", spy: "绘本" },
+  { civilian: "作文", spy: "日记" },
+  { civilian: "成语", spy: "谚语" },
+  { civilian: "童话", spy: "寓言" },
+  { civilian: "古诗", spy: "儿歌" },
+  { civilian: "字典", spy: "词典" },
+  { civilian: "朗读", spy: "背诵" },
+  { civilian: "标点", spy: "拼音" },
+  { civilian: "黑板", spy: "白板" },
+  { civilian: "封面", spy: "封底" },
+  { civilian: "书房", spy: "教室" },
+
+  // 数学
+  { civilian: "算盘", spy: "计算器" },
+  { civilian: "硬币", spy: "纽扣" },
+  { civilian: "1/2", spy: "0.5" },
+  { civilian: "尺子", spy: "量角器" },
+  { civilian: "直尺", spy: "圆规" },
+  { civilian: "挂钟", spy: "手表" },
+  { civilian: "钟表", spy: "沙漏" },
+  { civilian: "圆形", spy: "椭圆" },
+  { civilian: "千克", spy: "公斤" },
+  { civilian: "竖式", spy: "横式" },
+  { civilian: "米尺", spy: "卷尺" },
+  { civilian: "正方体", spy: "魔方" },
+
+  // 英语 / 基础词汇
+  { civilian: "book", spy: "notebook" },
+  { civilian: "cat", spy: "dog" },
+  { civilian: "apple", spy: "peach" },
+  { civilian: "car", spy: "bus" },
+  { civilian: "毛笔", spy: "钢笔" },
+  { civilian: "teacher", spy: "coach" },
+  { civilian: "China", spy: "Japan" },
+  { civilian: "rainy", spy: "snowy" },
+
+  // 科学 / 自然
+  { civilian: "太阳", spy: "月亮" },
+  { civilian: "地球", spy: "火星" },
+  { civilian: "火山", spy: "地震" },
+  { civilian: "蝴蝶", spy: "蜜蜂" },
+  { civilian: "鸭子", spy: "鹅子" },
+  { civilian: "鲸鱼", spy: "鲨鱼" },
+  { civilian: "铁块", spy: "木块" },
+  { civilian: "水滴", spy: "冰块" },
+  { civilian: "大树", spy: "小草" },
+  { civilian: "星星", spy: "月亮" },
+  { civilian: "磁铁", spy: "指南针" },
+  { civilian: "显微镜", spy: "望远镜" },
+
+  // 科学家 / 传说人物
+  { civilian: "孙悟空", spy: "猪八戒" },
+  { civilian: "牛顿", spy: "伽利略" },
+  { civilian: "居里夫人", spy: "屠呦呦" },
+  { civilian: "袁隆平", spy: "钟南山" },
+  { civilian: "达尔文", spy: "孟德尔" },
+  { civilian: "飞机", spy: "直升机" },
+
+  // 体育运动
+  { civilian: "足球", spy: "篮球" },
+  { civilian: "跑步", spy: "游泳" },
+  { civilian: "跳绳", spy: "跳远" },
+  { civilian: "乒乓球", spy: "羽毛球" },
+  { civilian: "体操", spy: "武术" },
+  { civilian: "滑冰", spy: "滑雪" },
+  { civilian: "射箭", spy: "射击" },
+  { civilian: "举重", spy: "摔跤" },
+  { civilian: "自行车", spy: "马拉松" },
+  { civilian: "游泳", spy: "跳水" },
+  { civilian: "排球", spy: "网球" },
+  { civilian: "瑜伽", spy: "舞蹈" },
+
+  // 名人 / 传说人物
+  { civilian: "李白", spy: "杜甫" },
+  { civilian: "哪吒", spy: "孙悟空" },
+  { civilian: "鲁迅", spy: "冰心" },
+  { civilian: "贝多芬", spy: "莫扎特" },
+  { civilian: "刘翔", spy: "姚明" },
+  { civilian: "关羽", spy: "张飞" },
+  { civilian: "班长", spy: "组长" },
+  { civilian: "诸葛亮", spy: "司马光" },
+  { civilian: "白雪公主", spy: "灰姑娘" },
+  { civilian: "奥特曼", spy: "蜘蛛侠" },
+
+  // 日常生活
+  { civilian: "水彩笔", spy: "蜡笔棒" },
+  { civilian: "雨伞", spy: "雨衣" },
+  { civilian: "牙刷", spy: "梳子" },
+  { civilian: "台灯", spy: "手电" },
+  { civilian: "汽车", spy: "火车" },
+  { civilian: "手机", spy: "电话" },
+  { civilian: "书包", spy: "背包" },
+  { civilian: "冰箱", spy: "空调" },
+  { civilian: "牛奶", spy: "酸奶" },
+  { civilian: "蛋糕", spy: "面包" },
+  { civilian: "闹钟", spy: "秒表" },
+  { civilian: "玩具熊", spy: "机器人" },
+
+  // 自然与动物
+  { civilian: "小河", spy: "小溪" },
+  { civilian: "山坡", spy: "山路" },
+  { civilian: "雨水", spy: "雪花" },
+  { civilian: "风儿", spy: "云朵" },
+  { civilian: "花朵", spy: "叶子" },
+  { civilian: "猴子", spy: "猩猩" },
+  { civilian: "企鹅", spy: "海豚" },
+  { civilian: "小鸡", spy: "小鸭" },
+  { civilian: "桃子", spy: "李子" },
+  { civilian: "沙漠", spy: "草原" },
+  { civilian: "白天", spy: "黑夜" },
+  { civilian: "春天", spy: "秋天" },
+
+  // 补充
+  { civilian: "橡皮擦", spy: "卷笔刀" },
+  { civilian: "牛奶", spy: "果汁" },
+  { civilian: "体育课", spy: "美术课" },
+  { civilian: "照片", spy: "图画" }
+];
+
+export const challengePairs = [
   // 科技
   { civilian: "智能手机", spy: "功能手机" },
   { civilian: "Wi-Fi", spy: "移动数据" },
@@ -109,28 +231,6 @@ export const wordPairs = [
   { civilian: "口红", spy: "唇釉" },
   { civilian: "笔记本", spy: "日记本" },
 
-  // 足球
-  { civilian: "B费（布鲁诺·费尔南德斯）", spy: "B席（贝尔纳多·席尔瓦）" },
-  { civilian: "芒特", spy: "赖斯" },
-  { civilian: "罗伊斯", spy: "格策" },
-  { civilian: "萨卡", spy: "史密斯·罗" },
-  { civilian: "努涅斯", spy: "阿尔瓦雷斯" },
-  { civilian: "麦卡利斯特", spy: "恩佐·费尔南德斯" },
-  { civilian: "坎塞洛", spy: "津琴科" },
-  { civilian: "于帕梅卡诺", spy: "科纳特" },
-  { civilian: "库卢塞夫斯基", spy: "伊兰加" },
-  { civilian: "伊萨克", spy: "哲凯赖什" },
-  { civilian: "亚伯拉罕", spy: "托莫里" },
-  { civilian: "斯特林", spy: "桑乔" },
-  { civilian: "维尔茨", spy: "穆西亚拉" },
-  { civilian: "佩德里", spy: "加维" },
-  { civilian: "卡马文加", spy: "琼阿梅尼" },
-  { civilian: "巴斯托尼", spy: "什克里尼亚尔" },
-  { civilian: "托纳利", spy: "洛卡特利" },
-  { civilian: "9248（切尔西2012欧冠绝平）", spy: "9320（曼城2012英超绝杀）" },
-  { civilian: "诺坎普奇迹", spy: "安菲尔德奇迹" },
-  { civilian: "自由人（清道夫）", spy: "拖后组织中卫" },
-
   // 网络热梗
   { civilian: "我太难了", spy: "我裂开了" },
   { civilian: "真香", spy: "打脸" },
@@ -217,5 +317,43 @@ export const wordPairs = [
   { civilian: "海啸", spy: "风暴潮" },
   { civilian: "陨石", spy: "流星" },
   { civilian: "空间站", spy: "卫星" },
-  { civilian: "日食", spy: "月食" }
+  { civilian: "日食", spy: "月食" },
+
+  // 足球
+  { civilian: "B费（布鲁诺·费尔南德斯）", spy: "B席（贝尔纳多·席尔瓦）" },
+  { civilian: "芒特", spy: "赖斯" },
+  { civilian: "罗伊斯", spy: "格策" },
+  { civilian: "萨卡", spy: "史密斯·罗" },
+  { civilian: "努涅斯", spy: "阿尔瓦雷斯" },
+  { civilian: "麦卡利斯特", spy: "恩佐·费尔南德斯" },
+  { civilian: "坎塞洛", spy: "津琴科" },
+  { civilian: "于帕梅卡诺", spy: "科纳特" },
+  { civilian: "库卢塞夫斯基", spy: "伊兰加" },
+  { civilian: "伊萨克", spy: "哲凯赖什" },
+  { civilian: "亚伯拉罕", spy: "托莫里" },
+  { civilian: "斯特林", spy: "桑乔" },
+  { civilian: "维尔茨", spy: "穆西亚拉" },
+  { civilian: "佩德里", spy: "加维" },
+  { civilian: "卡马文加", spy: "琼阿梅尼" },
+  { civilian: "巴斯托尼", spy: "什克里尼亚尔" },
+  { civilian: "托纳利", spy: "洛卡特利" },
+  { civilian: "9248（切尔西2012欧冠绝平）", spy: "9320（曼城2012英超绝杀）" },
+  { civilian: "诺坎普奇迹", spy: "安菲尔德奇迹" },
+  { civilian: "自由人（清道夫）", spy: "拖后组织中卫" }
 ];
+
+export const wordBanks = {
+  friendly: friendlyPairs,
+  challenge: challengePairs,
+  all: [...friendlyPairs, ...challengePairs]
+};
+
+export function getWordBankLabel(key) {
+  const labels = {
+    friendly: "友好版",
+    challenge: "综合版",
+    all: "全部词库"
+  };
+
+  return labels[key] || labels.all;
+}
