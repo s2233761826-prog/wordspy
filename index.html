@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WordSpy - 谁是卧底</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --card2: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent2: #3b82f6;
+      --danger: #ef4444;
+      --border: #374151;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e293b, #020617);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 42px;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 800px) {
+      .grid.two { grid-template-columns: 1fr 1fr; }
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      margin: 8px 0;
+    }
+
+    input:focus { border-color: var(--accent2); }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent2);
+      color: white;
+      transition: transform 0.08s ease, opacity 0.15s ease;
+    }
+
+    button:hover { opacity: 0.92; }
+    button:active { transform: scale(0.98); }
+
+    button.secondary {
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.green {
+      background: var(--accent);
+      color: #052e16;
+    }
+
+    button.red { background: var(--danger); }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .row button {
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #0b1120;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      margin-left: 6px;
+    }
+
+    .big-word {
+      font-size: 42px;
+      font-weight: 900;
+      text-align: center;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 26px 12px;
+      margin: 14px 0;
+      letter-spacing: 0.04em;
+    }
+
+    .muted { color: var(--muted); }
+
+    .players {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .player {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #020617;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+
+    .dead {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
+    .phase {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .notice {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      padding: 12px;
+      border-radius: 14px;
+      color: #bfdbfe;
+      line-height: 1.5;
+    }
+
+    .hidden { display: none !important; }
+
+    .vote-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .vote-btn {
+      width: 100%;
+      text-align: left;
+      background: #020617;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .vote-btn.selected {
+      background: #1d4ed8;
+      border-color: #60a5fa;
+    }
+
+    .log {
+      max-height: 170px;
+      overflow: auto;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>WordSpy</h1>
+      <div class="subtitle">传统「谁是卧底」在线房间版</div>
+    </header>
+
+    <div id="setupView" class="grid two">
+      <div class="card">
+        <h2>创建房间</h2>
+        <input id="createName" placeholder="你的名字" maxlength="20" />
+        <button class="green" id="createRoomBtn">创建房间</button>
+      </div>
+
+      <div class="card">
+        <h2>加入房间</h2>
+        <input id="joinName" placeholder="你的名字" maxlength="20" />
+        <input id="joinRoomId" placeholder="房间号，例如 ABCD" maxlength="8" />
+        <button id="joinRoomBtn">加入房间</button>
+      </div>
+    </div>
+
+    <div id="gameView" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="row" style="justify-content: space-between;">
+            <div>
+              <h2 style="margin-bottom: 4px;">房间 <span id="roomIdText"></span></h2>
+              <div class="phase">阶段：<span id="phaseText"></span></div>
+            </div>
+            <div class="pill">你是：<span id="youNameText"></span></div>
+          </div>
+
+          <div id="lobbyPanel">
+            <div class="notice">
+              等待玩家加入。建议 3–6 人开始。<br>
+              开始后，平民看到同一个词，卧底看到相近但不同的词。
+            </div>
+            <div class="row" style="margin-top: 12px;">
+              <button id="copyRoomBtn" class="secondary">复制房间号</button>
+              <button id="startGameBtn" class="green">开始游戏</button>
+            </div>
+          </div>
+
+          <div id="wordPanel" class="hidden">
+            <div class="muted">你的词是：</div>
+            <div class="big-word" id="myWordText">---</div>
+            <div class="notice">描述时不能直接说出这个词，也不要说太明显的同义词。</div>
+          </div>
+
+          <div id="votePanel" class="hidden">
+            <h2>投票淘汰</h2>
+            <div class="muted">选择你认为的卧底：</div>
+            <div id="voteList" class="vote-list"></div>
+            <button id="submitVoteBtn" class="green" style="margin-top: 10px;">提交投票</button>
+          </div>
+
+          <div id="resultPanel" class="hidden">
+            <h2 id="resultTitle">游戏结束</h2>
+            <div id="resultText" class="notice"></div>
+            <button id="newRoundBtn" class="green" style="margin-top: 12px;">再来一局</button>
+          </div>
+
+          <div id="hostControls" class="row hidden" style="margin-top: 14px;">
+            <button id="startVoteBtn">进入投票</button>
+            <button id="resetRoomBtn" class="red">重置房间</button>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div class="card">
+            <h2>玩家</h2>
+            <div id="playersList" class="players"></div>
+          </div>
+
+          <div class="card">
+            <h2>记录</h2>
+            <div id="logBox" class="log"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">WordSpy · powered by Firebase</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      set,
+      get,
+      update,
+      onValue,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAT7nY6UrOwU1GD-smmqLJvXW40jgNGwks",
+      authDomain: "wordspy-1d6ee.firebaseapp.com",
+      databaseURL: "https://wordspy-1d6ee-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "wordspy-1d6ee",
+      storageBucket: "wordspy-1d6ee.firebasestorage.app",
+      messagingSenderId: "991777666847",
+      appId: "1:991777666847:web:030aec4c08fc46083c622a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const ROOM_ROOT = "wordspyRooms";
+
+    const wordPairs = [
+      { civilian: "苹果", spy: "梨" },
+      { civilian: "咖啡", spy: "奶茶" },
+      { civilian: "足球", spy: "篮球" },
+      { civilian: "地铁", spy: "公交" },
+      { civilian: "海边", spy: "湖边" },
+      { civilian: "电影", spy: "电视剧" },
+      { civilian: "火锅", spy: "烧烤" },
+      { civilian: "机场", spy: "火车站" },
+      { civilian: "猫", spy: "狗" },
+      { civilian: "大学", spy: "高中" },
+      { civilian: "钢琴", spy: "吉他" },
+      { civilian: "可乐", spy: "雪碧" },
+      { civilian: "微信", spy: "QQ" },
+      { civilian: "米饭", spy: "面条" },
+      { civilian: "太阳", spy: "月亮" },
+      { civilian: "图书馆", spy: "教室" },
+      { civilian: "医院", spy: "诊所" },
+      { civilian: "夏天", spy: "冬天" },
+      { civilian: "老师", spy: "教授" },
+      { civilian: "手机", spy: "电脑" }
+    ];
+
+    const els = {
+      setupView: document.getElementById("setupView"),
+      gameView: document.getElementById("gameView"),
+      createName: document.getElementById("createName"),
+      joinName: document.getElementById("joinName"),
+      joinRoomId: document.getElementById("joinRoomId"),
+      createRoomBtn: document.getElementById("createRoomBtn"),
+      joinRoomBtn: document.getElementById("joinRoomBtn"),
+      roomIdText: document.getElementById("roomIdText"),
+      phaseText: document.getElementById("phaseText"),
+      youNameText: document.getElementById("youNameText"),
+      lobbyPanel: document.getElementById("lobbyPanel"),
+      wordPanel: document.getElementById("wordPanel"),
+      votePanel: document.getElementById("votePanel"),
+      resultPanel: document.getElementById("resultPanel"),
+      myWordText: document.getElementById("myWordText"),
+      playersList: document.getElementById("playersList"),
+      logBox: document.getElementById("logBox"),
+      hostControls: document.getElementById("hostControls"),
+      startGameBtn: document.getElementById("startGameBtn"),
+      startVoteBtn: document.getElementById("startVoteBtn"),
+      resetRoomBtn: document.getElementById("resetRoomBtn"),
+      copyRoomBtn: document.getElementById("copyRoomBtn"),
+      voteList: document.getElementById("voteList"),
+      submitVoteBtn: document.getElementById("submitVoteBtn"),
+      resultTitle: document.getElementById("resultTitle"),
+      resultText: document.getElementById("resultText"),
+      newRoundBtn: document.getElementById("newRoundBtn")
+    };
+
+    let roomId = null;
+    let playerId = localStorage.getItem("wordspyPlayerId");
+    let currentRoom = null;
+    let unsubscribe = null;
+    let selectedVote = null;
+
+    if (!playerId) {
+      playerId = "p_" + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem("wordspyPlayerId", playerId);
+    }
+
+    function roomRef(id = roomId) {
+      return ref(db, `${ROOM_ROOT}/${id}`);
+    }
+
+    function playerRef(id = roomId, pid = playerId) {
+      return ref(db, `${ROOM_ROOT}/${id}/players/${pid}`);
+    }
+
+    function randomRoomId() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let s = "";
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function allPlayers(room) {
+      return Object.entries(room.players || {}).map(([id, p]) => ({ id, ...p }));
+    }
+
+    function alivePlayers(room) {
+      return allPlayers(room).filter(p => p.alive !== false);
+    }
+
+    function isHost() {
+      return currentRoom && currentRoom.hostId === playerId;
+    }
+
+    function addLog(room, text) {
+      const logs = room.logs || [];
+      logs.push({ text, time: Date.now() });
+      return logs.slice(-50);
+    }
+
+    function getSpyCount(playerCount) {
+      if (playerCount >= 6) return 2;
+      return 1;
+    }
+
+    function phaseName(phase) {
+      return {
+        lobby: "等待开始",
+        describe: "描述阶段",
+        vote: "投票阶段",
+        result: "游戏结束"
+      }[phase] || phase;
+    }
+
+    async function createRoom() {
+      const name = els.createName.value.trim();
+      if (!name) return alert("请输入名字");
+
+      let id = randomRoomId();
+      let snap = await get(roomRef(id));
+      while (snap.exists()) {
+        id = randomRoomId();
+        snap = await get(roomRef(id));
+      }
+
+      roomId = id;
+
+      await set(roomRef(roomId), {
+        roomId,
+        hostId: playerId,
+        phase: "lobby",
+        round: 1,
+        createdAt: serverTimestamp(),
+        players: {
+          [playerId]: { name, alive: true, joinedAt: Date.now() }
+        },
+        logs: [{ text: `${name} 创建了房间`, time: Date.now() }]
+      });
+
+      enterRoom(roomId);
+    }
+
+    async function joinRoom() {
+      const name = els.joinName.value.trim();
+      const id = els.joinRoomId.value.trim().toUpperCase();
+
+      if (!name) return alert("请输入名字");
+      if (!id) return alert("请输入房间号");
+
+      const snap = await get(roomRef(id));
+      if (!snap.exists()) return alert("房间不存在");
+
+      roomId = id;
+      const room = snap.val();
+
+      await set(playerRef(roomId, playerId), {
+        name,
+        alive: true,
+        joinedAt: Date.now()
+      });
+
+      await update(roomRef(roomId), {
+        logs: addLog(room, `${name} 加入了房间`)
+      });
+
+      enterRoom(roomId);
+    }
+
+    function enterRoom(id) {
+      roomId = id;
+      els.setupView.classList.add("hidden");
+      els.gameView.classList.remove("hidden");
+
+      if (unsubscribe) unsubscribe();
+
+      unsubscribe = onValue(roomRef(roomId), snap => {
+        if (!snap.exists()) {
+          alert("房间已被删除");
+          location.reload();
+          return;
+        }
+        currentRoom = snap.val();
+        render();
+      });
+    }
+
+    async function startGame() {
+      if (!currentRoom || !isHost()) return;
+
+      const players = allPlayers(currentRoom);
+      if (players.length < 3) return alert("至少需要 3 人开始");
+      if (players.length > 8) return alert("目前建议最多 8 人");
+
+      const pair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
+      const flip = Math.random() < 0.5;
+
+      const civilianWord = flip ? pair.spy : pair.civilian;
+      const spyWord = flip ? pair.civilian : pair.spy;
+
+      const spyCount = getSpyCount(players.length);
+      const spies = new Set(shuffle(players).slice(0, spyCount).map(p => p.id));
+
+      const updates = {};
+
+      for (const p of players) {
+        const role = spies.has(p.id) ? "spy" : "civilian";
+        updates[`players/${p.id}/role`] = role;
+        updates[`players/${p.id}/word`] = role === "spy" ? spyWord : civilianWord;
+        updates[`players/${p.id}/alive`] = true;
+      }
+
+      updates.phase = "describe";
+      updates.votes = null;
+      updates.result = null;
+      updates.currentWords = { civilianWord, spyWord };
+      updates.logs = addLog(currentRoom, `第 ${currentRoom.round || 1} 局开始`);
+
+      await update(roomRef(roomId), updates);
+    }
+
+    async function startVote() {
+      if (!isHost()) return;
+      await update(roomRef(roomId), {
+        phase: "vote",
+        votes: null,
+        logs: addLog(currentRoom, "进入投票阶段")
+      });
+    }
+
+    async function submitVote() {
+      if (!selectedVote) return alert("请选择一名玩家");
+
+      const me = currentRoom.players[playerId];
+      if (!me || me.alive === false) return alert("你已被淘汰，不能投票");
+
+      await update(roomRef(roomId), {
+        [`votes/${playerId}`]: selectedVote
+      });
+
+      selectedVote = null;
+      setTimeout(checkVotesAndResolve, 300);
+    }
+
+    async function checkVotesAndResolve() {
+      const snap = await get(roomRef(roomId));
+      if (!snap.exists()) return;
+
+      const room = snap.val();
+      if (room.phase !== "vote") return;
+
+      const alive = alivePlayers(room);
+      const votes = room.votes || {};
+      const aliveIds = alive.map(p => p.id);
+
+      const allVoted = aliveIds.every(id => votes[id]);
+      if (!allVoted) return;
+
+      const counts = {};
+      Object.values(votes).forEach(targetId => {
+        counts[targetId] = (counts[targetId] || 0) + 1;
+      });
+
+      const maxVotes = Math.max(...Object.values(counts));
+      const top = Object.entries(counts).filter(([_, c]) => c === maxVotes).map(([id]) => id);
+      const eliminatedId = top[Math.floor(Math.random() * top.length)];
+      const eliminated = room.players[eliminatedId];
+
+      const newPlayers = JSON.parse(JSON.stringify(room.players));
+      newPlayers[eliminatedId].alive = false;
+
+      const aliveAfter = Object.entries(newPlayers)
+        .map(([id, p]) => ({ id, ...p }))
+        .filter(p => p.alive !== false);
+
+      const spyAlive = aliveAfter.filter(p => p.role === "spy").length;
+      const civilianAlive = aliveAfter.filter(p => p.role === "civilian").length;
+
+      const updates = {};
+      updates[`players/${eliminatedId}/alive`] = false;
+
+      let phase = "describe";
+      let result = null;
+      let logText = `${eliminated.name} 被投票淘汰`;
+
+      if (spyAlive === 0) {
+        phase = "result";
+        result = { winner: "civilian", text: "所有卧底都被淘汰，平民胜利！" };
+        logText += "。平民胜利。";
+      } else if (spyAlive >= civilianAlive) {
+        phase = "result";
+        result = { winner: "spy", text: "卧底人数已经不少于平民，卧底胜利！" };
+        logText += "。卧底胜利。";
+      } else {
+        logText += "。游戏继续。";
+      }
+
+      updates.phase = phase;
+      updates.result = result;
+      updates.votes = null;
+      updates.logs = addLog(room, logText);
+
+      await update(roomRef(roomId), updates);
+    }
+
+    async function newRound() {
+      if (!isHost()) return;
+
+      const players = allPlayers(currentRoom);
+      const updates = {
+        phase: "lobby",
+        round: (currentRoom.round || 1) + 1,
+        votes: null,
+        result: null,
+        currentWords: null,
+        logs: addLog(currentRoom, "准备开始新一局")
+      };
+
+      for (const p of players) {
+        updates[`players/${p.id}/alive`] = true;
+        updates[`players/${p.id}/role`] = null;
+        updates[`players/${p.id}/word`] = null;
+      }
+
+      await update(roomRef(roomId), updates);
+    }
+
+    async function resetRoom() {
+      if (!isHost()) return;
+      if (!confirm("确定要重置房间吗？")) return;
+
+      const players = allPlayers(currentRoom);
+      const updates = {
+        phase: "lobby",
+        round: 1,
+        votes: null,
+        result: null,
+        currentWords: null,
+        logs: addLog(currentRoom, "房间已重置")
+      };
+
+      for (const p of players) {
+        updates[`players/${p.id}/alive`] = true;
+        updates[`players/${p.id}/role`] = null;
+        updates[`players/${p.id}/word`] = null;
+      }
+
+      await update(roomRef(roomId), updates);
+    }
+
+    function render() {
+      if (!currentRoom) return;
+
+      const me = currentRoom.players?.[playerId];
+
+      els.roomIdText.textContent = currentRoom.roomId || roomId;
+      els.phaseText.textContent = phaseName(currentRoom.phase);
+      els.youNameText.textContent = me?.name || "未知";
+
+      els.lobbyPanel.classList.toggle("hidden", currentRoom.phase !== "lobby");
+      els.wordPanel.classList.toggle("hidden", !["describe", "vote"].includes(currentRoom.phase));
+      els.votePanel.classList.toggle("hidden", currentRoom.phase !== "vote");
+      els.resultPanel.classList.toggle("hidden", currentRoom.phase !== "result");
+      els.hostControls.classList.toggle("hidden", !(isHost() && currentRoom.phase === "describe"));
+
+      els.startGameBtn.style.display = isHost() ? "inline-block" : "none";
+      els.newRoundBtn.style.display = isHost() ? "inline-block" : "none";
+
+      els.myWordText.textContent = me?.word || "---";
+
+      renderPlayers();
+      renderVotes();
+      renderResult();
+      renderLogs();
+    }
+
+    function renderPlayers() {
+      const players = allPlayers(currentRoom);
+      els.playersList.innerHTML = "";
+
+      for (const p of players) {
+        const div = document.createElement("div");
+        div.className = "player" + (p.alive === false ? " dead" : "");
+
+        const left = document.createElement("div");
+        left.innerHTML = `
+          <strong>${escapeHtml(p.name)}</strong>
+          ${p.id === currentRoom.hostId ? '<span class="pill">Host</span>' : ''}
+          ${p.id === playerId ? '<span class="pill">You</span>' : ''}
+        `;
+
+        const right = document.createElement("div");
+        right.className = "muted";
+        right.textContent = p.alive === false ? "已淘汰" : "存活";
+
+        div.appendChild(left);
+        div.appendChild(right);
+        els.playersList.appendChild(div);
+      }
+    }
+
+    function renderVotes() {
+      if (currentRoom.phase !== "vote") return;
+
+      const me = currentRoom.players?.[playerId];
+      const alreadyVoted = !!currentRoom.votes?.[playerId];
+
+      els.voteList.innerHTML = "";
+
+      const candidates = alivePlayers(currentRoom).filter(p => p.id !== playerId);
+
+      for (const p of candidates) {
+        const btn = document.createElement("button");
+        btn.className = "vote-btn" + (selectedVote === p.id ? " selected" : "");
+        btn.textContent = p.name;
+        btn.disabled = alreadyVoted || me?.alive === false;
+        btn.onclick = () => {
+          selectedVote = p.id;
+          renderVotes();
+        };
+        els.voteList.appendChild(btn);
+      }
+
+      els.submitVoteBtn.disabled = alreadyVoted || me?.alive === false;
+      els.submitVoteBtn.textContent = alreadyVoted ? "已投票，等待其他玩家" : "提交投票";
+    }
+
+    function renderResult() {
+      if (currentRoom.phase !== "result") return;
+
+      const result = currentRoom.result;
+      if (!result) return;
+
+      els.resultTitle.textContent = result.winner === "spy" ? "卧底胜利" : "平民胜利";
+
+      const words = currentRoom.currentWords || {};
+      const spies = allPlayers(currentRoom).filter(p => p.role === "spy");
+
+      els.resultText.innerHTML = `
+        ${escapeHtml(result.text)}<br><br>
+        平民词：<strong>${escapeHtml(words.civilianWord || "")}</strong><br>
+        卧底词：<strong>${escapeHtml(words.spyWord || "")}</strong><br>
+        卧底：<strong>${spies.map(p => escapeHtml(p.name)).join("、")}</strong>
+      `;
+    }
+
+    function renderLogs() {
+      const logs = currentRoom.logs || [];
+      els.logBox.innerHTML = logs
+        .slice()
+        .reverse()
+        .map(l => `<div>• ${escapeHtml(l.text)}</div>`)
+        .join("");
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function copyRoomId() {
+      await navigator.clipboard.writeText(roomId);
+      alert("房间号已复制：" + roomId);
+    }
+
+    els.createRoomBtn.onclick = createRoom;
+    els.joinRoomBtn.onclick = joinRoom;
+    els.startGameBtn.onclick = startGame;
+    els.startVoteBtn.onclick = startVote;
+    els.submitVoteBtn.onclick = submitVote;
+    els.newRoundBtn.onclick = newRound;
+    els.resetRoomBtn.onclick = resetRoom;
+    els.copyRoomBtn.onclick = copyRoomId;
+  </script>
+</body>
+</html>
