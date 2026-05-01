@@ -14,6 +14,7 @@
       --accent: #22c55e;
       --accent2: #3b82f6;
       --danger: #ef4444;
+      --warning: #f59e0b;
       --border: #374151;
     }
 
@@ -28,7 +29,7 @@
     }
 
     .container {
-      max-width: 960px;
+      max-width: 980px;
       margin: 0 auto;
       padding: 28px 16px 60px;
     }
@@ -114,6 +115,7 @@
     }
 
     button.red { background: var(--danger); }
+    button.orange { background: var(--warning); color: #111827; }
 
     button:disabled {
       opacity: 0.45;
@@ -159,13 +161,13 @@
 
     .muted { color: var(--muted); }
 
-    .players {
+    .players, .speech-list {
       display: grid;
       gap: 8px;
       margin-top: 12px;
     }
 
-    .player {
+    .player, .speech-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -173,6 +175,15 @@
       border: 1px solid var(--border);
       padding: 10px 12px;
       border-radius: 12px;
+    }
+
+    .current-speaker {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .done-speaker {
+      opacity: 0.55;
     }
 
     .dead {
@@ -192,6 +203,15 @@
       padding: 12px;
       border-radius: 14px;
       color: #bfdbfe;
+      line-height: 1.5;
+    }
+
+    .warningBox {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      padding: 12px;
+      border-radius: 14px;
+      color: #fde68a;
       line-height: 1.5;
     }
 
@@ -217,7 +237,7 @@
     }
 
     .log {
-      max-height: 170px;
+      max-height: 190px;
       overflow: auto;
       background: #020617;
       border: 1px solid var(--border);
@@ -233,6 +253,11 @@
       text-align: center;
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .timer {
+      font-weight: 800;
+      color: #facc15;
     }
   </style>
 </head>
@@ -296,9 +321,36 @@
             <div class="notice">描述时不能直接说出这个词，也不要说太明显的同义词。</div>
           </div>
 
+          <div id="speechPanel" class="hidden">
+            <h2>发言顺序</h2>
+            <div id="speechStatus" class="notice"></div>
+            <div id="speechList" class="speech-list"></div>
+            <button id="finishSpeakingBtn" class="green hidden" style="margin-top: 12px;">我说完了</button>
+          </div>
+
+          <div id="voteIntentPanel" class="hidden">
+            <h2>是否进入投票？</h2>
+            <div class="warningBox">
+              1分钟内选择。大于等于一半存活玩家同意，即进入正式投票。<br>
+              超时未选择会视为拒绝。如果同意人数不够，会重新开始新一轮描述。
+            </div>
+            <div style="margin-top: 10px;">剩余时间：<span id="voteIntentTimer" class="timer">--</span></div>
+            <div style="margin-top: 10px;">当前同意：<span id="agreeCountText">0</span> / 需要 <span id="agreeNeedText">0</span></div>
+            <div class="row" style="margin-top: 12px;">
+              <button id="agreeVoteBtn" class="green">Agree to vote</button>
+              <button id="refuseVoteBtn" class="red">Refuse to vote</button>
+              <button id="cancelIntentBtn" class="secondary">Cancel</button>
+            </div>
+            <div class="muted" id="myIntentText" style="margin-top: 10px;"></div>
+          </div>
+
           <div id="votePanel" class="hidden">
             <h2>投票淘汰</h2>
-            <div class="muted">选择你认为的卧底：</div>
+            <div class="warningBox">
+              1分钟内选择你认为的卧底。超时未投票者，系统会随机投给一名可投对象。
+            </div>
+            <div style="margin-top: 10px;">剩余时间：<span id="voteTimer" class="timer">--</span></div>
+            <div class="muted" style="margin-top: 10px;">选择你认为的卧底：</div>
             <div id="voteList" class="vote-list"></div>
             <button id="submitVoteBtn" class="green" style="margin-top: 10px;">提交投票</button>
           </div>
@@ -310,7 +362,6 @@
           </div>
 
           <div id="hostControls" class="row hidden" style="margin-top: 14px;">
-            <button id="startVoteBtn">进入投票</button>
             <button id="resetRoomBtn" class="red">重置房间</button>
           </div>
         </div>
@@ -356,7 +407,6 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-
     const ROOM_ROOT = "wordspyRooms";
 
     const wordPairs = [
@@ -407,14 +457,26 @@
       youNameText: document.getElementById("youNameText"),
       lobbyPanel: document.getElementById("lobbyPanel"),
       wordPanel: document.getElementById("wordPanel"),
+      speechPanel: document.getElementById("speechPanel"),
+      speechStatus: document.getElementById("speechStatus"),
+      speechList: document.getElementById("speechList"),
+      finishSpeakingBtn: document.getElementById("finishSpeakingBtn"),
+      voteIntentPanel: document.getElementById("voteIntentPanel"),
+      voteIntentTimer: document.getElementById("voteIntentTimer"),
+      agreeCountText: document.getElementById("agreeCountText"),
+      agreeNeedText: document.getElementById("agreeNeedText"),
+      agreeVoteBtn: document.getElementById("agreeVoteBtn"),
+      refuseVoteBtn: document.getElementById("refuseVoteBtn"),
+      cancelIntentBtn: document.getElementById("cancelIntentBtn"),
+      myIntentText: document.getElementById("myIntentText"),
       votePanel: document.getElementById("votePanel"),
+      voteTimer: document.getElementById("voteTimer"),
       resultPanel: document.getElementById("resultPanel"),
       myWordText: document.getElementById("myWordText"),
       playersList: document.getElementById("playersList"),
       logBox: document.getElementById("logBox"),
       hostControls: document.getElementById("hostControls"),
       startGameBtn: document.getElementById("startGameBtn"),
-      startVoteBtn: document.getElementById("startVoteBtn"),
       resetRoomBtn: document.getElementById("resetRoomBtn"),
       copyRoomBtn: document.getElementById("copyRoomBtn"),
       voteList: document.getElementById("voteList"),
@@ -425,14 +487,14 @@
     };
 
     let roomId = null;
-    let playerId = localStorage.getItem("wordspyPlayerId");
+    let playerId = sessionStorage.getItem("wordspyPlayerId");
     let currentRoom = null;
     let unsubscribe = null;
     let selectedVote = null;
 
     if (!playerId) {
       playerId = "p_" + Math.random().toString(36).slice(2, 10);
-      localStorage.setItem("wordspyPlayerId", playerId);
+      sessionStorage.setItem("wordspyPlayerId", playerId);
     }
 
     function roomRef(id = roomId) {
@@ -474,7 +536,7 @@
     function addLog(room, text) {
       const logs = room.logs || [];
       logs.push({ text, time: Date.now() });
-      return logs.slice(-50);
+      return logs.slice(-60);
     }
 
     function getGameConfig(playerCount) {
@@ -484,7 +546,6 @@
         5: { civilians: 4, spies: 1 },
         6: { civilians: 4, spies: 2 }
       };
-
       return configs[playerCount] || configs[3];
     }
 
@@ -498,9 +559,23 @@
       return {
         lobby: "等待开始",
         describe: "描述阶段",
+        voteIntent: "是否投票",
         vote: "投票阶段",
         result: "游戏结束"
       }[phase] || phase;
+    }
+
+    function getName(room, id) {
+      return room.players?.[id]?.name || "未知玩家";
+    }
+
+    function now() {
+      return Date.now();
+    }
+
+    function secondsLeft(deadline) {
+      if (!deadline) return "--";
+      return Math.max(0, Math.ceil((deadline - now()) / 1000));
     }
 
     async function createRoom() {
@@ -587,10 +662,25 @@
           location.href = location.pathname;
           return;
         }
-
         currentRoom = snap.val();
         render();
       });
+    }
+
+    function makeSpeechUpdates(room, logText) {
+      const alive = alivePlayers(room);
+      const order = shuffle(alive.map(p => p.id));
+
+      return {
+        phase: "describe",
+        speechOrder: order,
+        currentSpeakerIndex: 0,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        votes: null,
+        voteDeadline: null,
+        logs: addLog(room, logText || "新一轮描述开始，发言顺序已随机生成")
+      };
     }
 
     async function startGame() {
@@ -621,22 +711,86 @@
         updates[`players/${p.id}/alive`] = true;
       }
 
-      updates.phase = "describe";
-      updates.votes = null;
+      Object.assign(updates, makeSpeechUpdates(currentRoom, `第 ${currentRoom.round || 1} 局开始，发言顺序已随机生成`));
       updates.result = null;
       updates.currentWords = { civilianWord, spyWord };
-      updates.logs = addLog(currentRoom, `第 ${currentRoom.round || 1} 局开始`);
 
       await update(roomRef(roomId), updates);
     }
 
-    async function startVote() {
-      if (!isHost()) return;
+    async function finishSpeaking() {
+      if (!currentRoom || currentRoom.phase !== "describe") return;
 
+      const order = currentRoom.speechOrder || [];
+      const idx = currentRoom.currentSpeakerIndex || 0;
+
+      if (order[idx] !== playerId) return alert("还没轮到你发言。");
+
+      if (idx + 1 >= order.length) {
+        await startVoteIntent();
+      } else {
+        await update(roomRef(roomId), {
+          currentSpeakerIndex: idx + 1,
+          logs: addLog(currentRoom, `${getName(currentRoom, playerId)} 发言结束，轮到 ${getName(currentRoom, order[idx + 1])}`)
+        });
+      }
+    }
+
+    async function startVoteIntent() {
+      const deadline = Date.now() + 60 * 1000;
+
+      await update(roomRef(roomId), {
+        phase: "voteIntent",
+        voteIntents: null,
+        voteIntentDeadline: deadline,
+        logs: addLog(currentRoom, "全员发言结束，进入是否投票阶段")
+      });
+    }
+
+    async function setVoteIntent(choice) {
+      if (!currentRoom || currentRoom.phase !== "voteIntent") return;
+
+      if (choice === "cancel") {
+        await update(roomRef(roomId), {
+          [`voteIntents/${playerId}`]: null
+        });
+      } else {
+        await update(roomRef(roomId), {
+          [`voteIntents/${playerId}`]: choice
+        });
+      }
+
+      setTimeout(checkVoteIntent, 300);
+    }
+
+    async function checkVoteIntent() {
+      const snap = await get(roomRef(roomId));
+      if (!snap.exists()) return;
+
+      const room = snap.val();
+      if (room.phase !== "voteIntent") return;
+
+      const alive = alivePlayers(room);
+      const need = Math.ceil(alive.length / 2);
+      const intents = room.voteIntents || {};
+      const agreeCount = alive.filter(p => intents[p.id] === "agree").length;
+
+      if (agreeCount >= need) {
+        await startFormalVote(room, `已有 ${agreeCount}/${alive.length} 人同意投票，进入正式投票`);
+        return;
+      }
+
+      if (room.voteIntentDeadline && Date.now() >= room.voteIntentDeadline) {
+        await update(roomRef(roomId), makeSpeechUpdates(room, `同意投票人数不足（${agreeCount}/${need}），重新开始新一轮描述`));
+      }
+    }
+
+    async function startFormalVote(room, logText) {
       await update(roomRef(roomId), {
         phase: "vote",
         votes: null,
-        logs: addLog(currentRoom, "进入投票阶段")
+        voteDeadline: Date.now() + 60 * 1000,
+        logs: addLog(room, logText || "进入正式投票阶段")
       });
     }
 
@@ -654,6 +808,12 @@
       setTimeout(checkVotesAndResolve, 300);
     }
 
+    function randomVoteTarget(room, voterId) {
+      const candidates = alivePlayers(room).filter(p => p.id !== voterId);
+      if (candidates.length === 0) return null;
+      return candidates[Math.floor(Math.random() * candidates.length)].id;
+    }
+
     async function checkVotesAndResolve() {
       const snap = await get(roomRef(roomId));
       if (!snap.exists()) return;
@@ -662,14 +822,42 @@
       if (room.phase !== "vote") return;
 
       const alive = alivePlayers(room);
-      const votes = room.votes || {};
       const aliveIds = alive.map(p => p.id);
+      const votes = { ...(room.votes || {}) };
 
       const allVoted = aliveIds.every(id => votes[id]);
-      if (!allVoted) return;
+
+      if (!allVoted) {
+        if (!room.voteDeadline || Date.now() < room.voteDeadline) return;
+
+        for (const id of aliveIds) {
+          if (!votes[id]) {
+            votes[id] = randomVoteTarget(room, id);
+          }
+        }
+
+        await update(roomRef(roomId), {
+          votes,
+          logs: addLog(room, "投票时间结束，未投票玩家已由系统随机投票")
+        });
+      }
+
+      await resolveVotes({ ...room, votes });
+    }
+
+    async function resolveVotes(room) {
+      if (room.phase !== "vote") return;
+
+      const votes = room.votes || {};
+      const validVotes = Object.values(votes).filter(Boolean);
+
+      if (validVotes.length === 0) {
+        await update(roomRef(roomId), makeSpeechUpdates(room, "没有有效投票，重新开始新一轮描述"));
+        return;
+      }
 
       const counts = {};
-      Object.values(votes).forEach(targetId => {
+      validVotes.forEach(targetId => {
         counts[targetId] = (counts[targetId] || 0) + 1;
       });
 
@@ -702,18 +890,24 @@
         phase = "result";
         result = { winner: "civilian", text: "所有卧底都被淘汰，平民胜利！" };
         logText += "。平民胜利。";
+        updates.phase = phase;
+        updates.result = result;
+        updates.votes = null;
+        updates.voteDeadline = null;
+        updates.logs = addLog(room, logText);
       } else if (spyAlive >= civilianAlive) {
         phase = "result";
         result = { winner: "spy", text: "卧底人数已经不少于平民，卧底胜利！" };
         logText += "。卧底胜利。";
+        updates.phase = phase;
+        updates.result = result;
+        updates.votes = null;
+        updates.voteDeadline = null;
+        updates.logs = addLog(room, logText);
       } else {
-        logText += "。游戏继续。";
+        const tempRoom = { ...room, players: newPlayers };
+        Object.assign(updates, makeSpeechUpdates(tempRoom, logText + "。游戏继续，新一轮描述开始"));
       }
-
-      updates.phase = phase;
-      updates.result = result;
-      updates.votes = null;
-      updates.logs = addLog(room, logText);
 
       await update(roomRef(roomId), updates);
     }
@@ -726,6 +920,11 @@
         phase: "lobby",
         round: (currentRoom.round || 1) + 1,
         votes: null,
+        voteDeadline: null,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        speechOrder: null,
+        currentSpeakerIndex: null,
         result: null,
         currentWords: null,
         logs: addLog(currentRoom, "准备开始新一局")
@@ -749,6 +948,11 @@
         phase: "lobby",
         round: 1,
         votes: null,
+        voteDeadline: null,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        speechOrder: null,
+        currentSpeakerIndex: null,
         result: null,
         currentWords: null,
         logs: addLog(currentRoom, "房间已重置")
@@ -774,10 +978,12 @@
       els.youNameText.textContent = me?.name || "未知";
 
       els.lobbyPanel.classList.toggle("hidden", currentRoom.phase !== "lobby");
-      els.wordPanel.classList.toggle("hidden", !["describe", "vote"].includes(currentRoom.phase));
+      els.wordPanel.classList.toggle("hidden", !["describe", "voteIntent", "vote"].includes(currentRoom.phase));
+      els.speechPanel.classList.toggle("hidden", currentRoom.phase !== "describe");
+      els.voteIntentPanel.classList.toggle("hidden", currentRoom.phase !== "voteIntent");
       els.votePanel.classList.toggle("hidden", currentRoom.phase !== "vote");
       els.resultPanel.classList.toggle("hidden", currentRoom.phase !== "result");
-      els.hostControls.classList.toggle("hidden", !(isHost() && currentRoom.phase === "describe"));
+      els.hostControls.classList.toggle("hidden", !isHost());
 
       els.startGameBtn.style.display = isHost() ? "inline-block" : "none";
       els.newRoundBtn.style.display = isHost() ? "inline-block" : "none";
@@ -785,6 +991,8 @@
       els.myWordText.textContent = me?.word || "---";
 
       renderPlayers();
+      renderSpeech();
+      renderVoteIntent();
       renderVotes();
       renderResult();
       renderLogs();
@@ -815,12 +1023,61 @@
       }
     }
 
+    function renderSpeech() {
+      if (currentRoom.phase !== "describe") return;
+
+      const order = currentRoom.speechOrder || [];
+      const idx = currentRoom.currentSpeakerIndex || 0;
+      const currentSpeakerId = order[idx];
+
+      els.speechStatus.innerHTML = currentSpeakerId
+        ? `当前发言：<strong>${escapeHtml(getName(currentRoom, currentSpeakerId))}</strong>`
+        : "等待发言顺序生成...";
+
+      els.speechList.innerHTML = "";
+
+      order.forEach((id, i) => {
+        const div = document.createElement("div");
+        div.className = "speech-item";
+        if (i === idx) div.classList.add("current-speaker");
+        if (i < idx) div.classList.add("done-speaker");
+
+        div.innerHTML = `
+          <span>${i + 1}. ${escapeHtml(getName(currentRoom, id))}</span>
+          <span class="muted">${i < idx ? "已发言" : i === idx ? "正在发言" : "等待"}</span>
+        `;
+
+        els.speechList.appendChild(div);
+      });
+
+      els.finishSpeakingBtn.classList.toggle("hidden", currentSpeakerId !== playerId);
+    }
+
+    function renderVoteIntent() {
+      if (currentRoom.phase !== "voteIntent") return;
+
+      const alive = alivePlayers(currentRoom);
+      const need = Math.ceil(alive.length / 2);
+      const intents = currentRoom.voteIntents || {};
+      const agreeCount = alive.filter(p => intents[p.id] === "agree").length;
+      const myIntent = intents[playerId];
+
+      els.voteIntentTimer.textContent = `${secondsLeft(currentRoom.voteIntentDeadline)}s`;
+      els.agreeCountText.textContent = agreeCount;
+      els.agreeNeedText.textContent = need;
+
+      els.myIntentText.textContent = myIntent
+        ? `你的选择：${myIntent === "agree" ? "Agree to vote" : "Refuse to vote"}`
+        : "你还没有选择。";
+    }
+
     function renderVotes() {
       if (currentRoom.phase !== "vote") return;
 
       const me = currentRoom.players?.[playerId];
       const alreadyVoted = !!currentRoom.votes?.[playerId];
 
+      els.voteTimer.textContent = `${secondsLeft(currentRoom.voteDeadline)}s`;
       els.voteList.innerHTML = "";
 
       const candidates = alivePlayers(currentRoom).filter(p => p.id !== playerId);
@@ -887,7 +1144,10 @@
     els.createRoomBtn.onclick = createRoom;
     els.joinRoomBtn.onclick = joinRoom;
     els.startGameBtn.onclick = startGame;
-    els.startVoteBtn.onclick = startVote;
+    els.finishSpeakingBtn.onclick = finishSpeaking;
+    els.agreeVoteBtn.onclick = () => setVoteIntent("agree");
+    els.refuseVoteBtn.onclick = () => setVoteIntent("refuse");
+    els.cancelIntentBtn.onclick = () => setVoteIntent("cancel");
     els.submitVoteBtn.onclick = submitVote;
     els.newRoundBtn.onclick = newRound;
     els.resetRoomBtn.onclick = resetRoom;
@@ -901,6 +1161,20 @@
       els.joinRoomId.readOnly = true;
       els.joinRoomId.style.opacity = "0.65";
     }
+
+    setInterval(() => {
+      if (!currentRoom) return;
+
+      if (currentRoom.phase === "voteIntent") {
+        renderVoteIntent();
+        checkVoteIntent();
+      }
+
+      if (currentRoom.phase === "vote") {
+        renderVotes();
+        checkVotesAndResolve();
+      }
+    }, 1000);
   </script>
 </body>
 </html>
