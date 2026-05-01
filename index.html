@@ -73,7 +73,7 @@
       font-size: 20px;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 12px 13px;
       border-radius: 12px;
@@ -85,7 +85,7 @@
       margin: 8px 0;
     }
 
-    input:focus { border-color: var(--accent2); }
+    input:focus, select:focus { border-color: var(--accent2); }
 
     button {
       border: 0;
@@ -248,6 +248,14 @@
       <div class="card">
         <h2>创建房间</h2>
         <input id="createName" placeholder="你的名字" maxlength="20" />
+
+        <select id="createPlayerCount">
+          <option value="3">3人：2平民 + 1卧底</option>
+          <option value="4">4人：3平民 + 1卧底</option>
+          <option value="5">5人：4平民 + 1卧底</option>
+          <option value="6">6人：4平民 + 2卧底</option>
+        </select>
+
         <button class="green" id="createRoomBtn">创建房间</button>
       </div>
 
@@ -266,17 +274,18 @@
             <div>
               <h2 style="margin-bottom: 4px;">房间 <span id="roomIdText"></span></h2>
               <div class="phase">阶段：<span id="phaseText"></span></div>
+              <div class="phase">人数配置：<span id="roomConfigText"></span></div>
             </div>
             <div class="pill">你是：<span id="youNameText"></span></div>
           </div>
 
           <div id="lobbyPanel">
             <div class="notice">
-              等待玩家加入。建议 3–6 人开始。<br>
+              等待玩家加入。Host 创建房间时会提前选定人数。<br>
               开始后，平民看到同一个词，卧底看到相近但不同的词。
             </div>
             <div class="row" style="margin-top: 12px;">
-              <button id="copyRoomBtn" class="secondary">复制房间号</button>
+              <button id="copyRoomBtn" class="secondary">复制邀请链接</button>
               <button id="startGameBtn" class="green">开始游戏</button>
             </div>
           </div>
@@ -370,18 +379,30 @@
       { civilian: "医院", spy: "诊所" },
       { civilian: "夏天", spy: "冬天" },
       { civilian: "老师", spy: "教授" },
-      { civilian: "手机", spy: "电脑" }
+      { civilian: "手机", spy: "电脑" },
+      { civilian: "火车", spy: "高铁" },
+      { civilian: "西瓜", spy: "哈密瓜" },
+      { civilian: "牛奶", spy: "豆浆" },
+      { civilian: "雨伞", spy: "雨衣" },
+      { civilian: "小说", spy: "漫画" },
+      { civilian: "酒店", spy: "民宿" },
+      { civilian: "沙发", spy: "椅子" },
+      { civilian: "跑步", spy: "散步" },
+      { civilian: "春节", spy: "中秋节" },
+      { civilian: "博物馆", spy: "美术馆" }
     ];
 
     const els = {
       setupView: document.getElementById("setupView"),
       gameView: document.getElementById("gameView"),
       createName: document.getElementById("createName"),
+      createPlayerCount: document.getElementById("createPlayerCount"),
       joinName: document.getElementById("joinName"),
       joinRoomId: document.getElementById("joinRoomId"),
       createRoomBtn: document.getElementById("createRoomBtn"),
       joinRoomBtn: document.getElementById("joinRoomBtn"),
       roomIdText: document.getElementById("roomIdText"),
+      roomConfigText: document.getElementById("roomConfigText"),
       phaseText: document.getElementById("phaseText"),
       youNameText: document.getElementById("youNameText"),
       lobbyPanel: document.getElementById("lobbyPanel"),
@@ -456,9 +477,21 @@
       return logs.slice(-50);
     }
 
-    function getSpyCount(playerCount) {
-      if (playerCount >= 6) return 2;
-      return 1;
+    function getGameConfig(playerCount) {
+      const configs = {
+        3: { civilians: 2, spies: 1 },
+        4: { civilians: 3, spies: 1 },
+        5: { civilians: 4, spies: 1 },
+        6: { civilians: 4, spies: 2 }
+      };
+
+      return configs[playerCount] || configs[3];
+    }
+
+    function configText(room) {
+      const maxPlayers = room.maxPlayers || 3;
+      const config = room.config || getGameConfig(maxPlayers);
+      return `${maxPlayers}人：${config.civilians}平民 + ${config.spies}卧底`;
     }
 
     function phaseName(phase) {
@@ -474,8 +507,12 @@
       const name = els.createName.value.trim();
       if (!name) return alert("请输入名字");
 
+      const playerCount = Number(els.createPlayerCount.value || 3);
+      const config = getGameConfig(playerCount);
+
       let id = randomRoomId();
       let snap = await get(roomRef(id));
+
       while (snap.exists()) {
         id = randomRoomId();
         snap = await get(roomRef(id));
@@ -488,14 +525,17 @@
         hostId: playerId,
         phase: "lobby",
         round: 1,
+        maxPlayers: playerCount,
+        config,
         createdAt: serverTimestamp(),
         players: {
           [playerId]: { name, alive: true, joinedAt: Date.now() }
         },
-        logs: [{ text: `${name} 创建了房间`, time: Date.now() }]
+        logs: [{ text: `${name} 创建了 ${configText({ maxPlayers: playerCount, config })} 房间`, time: Date.now() }]
       });
 
       enterRoom(roomId);
+      history.replaceState(null, "", `?room=${roomId}`);
     }
 
     async function joinRoom() {
@@ -510,6 +550,15 @@
 
       roomId = id;
       const room = snap.val();
+      const players = allPlayers(room);
+
+      if (room.phase !== "lobby") {
+        return alert("游戏已经开始，暂时不能加入。");
+      }
+
+      if (players.length >= (room.maxPlayers || 3) && !room.players?.[playerId]) {
+        return alert("房间人数已满。");
+      }
 
       await set(playerRef(roomId, playerId), {
         name,
@@ -522,6 +571,7 @@
       });
 
       enterRoom(roomId);
+      history.replaceState(null, "", `?room=${roomId}`);
     }
 
     function enterRoom(id) {
@@ -534,9 +584,10 @@
       unsubscribe = onValue(roomRef(roomId), snap => {
         if (!snap.exists()) {
           alert("房间已被删除");
-          location.reload();
+          location.href = location.pathname;
           return;
         }
+
         currentRoom = snap.val();
         render();
       });
@@ -546,8 +597,11 @@
       if (!currentRoom || !isHost()) return;
 
       const players = allPlayers(currentRoom);
-      if (players.length < 3) return alert("至少需要 3 人开始");
-      if (players.length > 8) return alert("目前建议最多 8 人");
+      const maxPlayers = currentRoom.maxPlayers || 3;
+
+      if (players.length !== maxPlayers) {
+        return alert(`当前房间设定为 ${maxPlayers} 人，需要人数到齐后才能开始。现在是 ${players.length} 人。`);
+      }
 
       const pair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
       const flip = Math.random() < 0.5;
@@ -555,7 +609,7 @@
       const civilianWord = flip ? pair.spy : pair.civilian;
       const spyWord = flip ? pair.civilian : pair.spy;
 
-      const spyCount = getSpyCount(players.length);
+      const spyCount = currentRoom.config?.spies || getGameConfig(players.length).spies;
       const spies = new Set(shuffle(players).slice(0, spyCount).map(p => p.id));
 
       const updates = {};
@@ -578,6 +632,7 @@
 
     async function startVote() {
       if (!isHost()) return;
+
       await update(roomRef(roomId), {
         phase: "vote",
         votes: null,
@@ -619,7 +674,10 @@
       });
 
       const maxVotes = Math.max(...Object.values(counts));
-      const top = Object.entries(counts).filter(([_, c]) => c === maxVotes).map(([id]) => id);
+      const top = Object.entries(counts)
+        .filter(([_, c]) => c === maxVotes)
+        .map(([id]) => id);
+
       const eliminatedId = top[Math.floor(Math.random() * top.length)];
       const eliminated = room.players[eliminatedId];
 
@@ -711,6 +769,7 @@
       const me = currentRoom.players?.[playerId];
 
       els.roomIdText.textContent = currentRoom.roomId || roomId;
+      els.roomConfigText.textContent = configText(currentRoom);
       els.phaseText.textContent = phaseName(currentRoom.phase);
       els.youNameText.textContent = me?.name || "未知";
 
@@ -820,8 +879,9 @@
     }
 
     async function copyRoomId() {
-      await navigator.clipboard.writeText(roomId);
-      alert("房间号已复制：" + roomId);
+      const url = `${location.origin}${location.pathname}?room=${roomId}`;
+      await navigator.clipboard.writeText(url);
+      alert("邀请链接已复制：\n" + url);
     }
 
     els.createRoomBtn.onclick = createRoom;
@@ -832,6 +892,15 @@
     els.newRoundBtn.onclick = newRound;
     els.resetRoomBtn.onclick = resetRoom;
     els.copyRoomBtn.onclick = copyRoomId;
+
+    const urlParams = new URLSearchParams(location.search);
+    const roomFromUrl = urlParams.get("room");
+
+    if (roomFromUrl) {
+      els.joinRoomId.value = roomFromUrl.toUpperCase();
+      els.joinRoomId.readOnly = true;
+      els.joinRoomId.style.opacity = "0.65";
+    }
   </script>
 </body>
 </html>
