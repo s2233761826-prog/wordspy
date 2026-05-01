@@ -34,10 +34,7 @@
       padding: 28px 16px 60px;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 24px;
-    }
+    header { text-align: center; margin-bottom: 24px; }
 
     h1 {
       margin: 0;
@@ -69,10 +66,7 @@
       box-shadow: 0 18px 40px rgba(0,0,0,0.25);
     }
 
-    .card h2 {
-      margin: 0 0 12px;
-      font-size: 20px;
-    }
+    .card h2 { margin: 0 0 12px; font-size: 20px; }
 
     input, select, textarea {
       width: 100%;
@@ -115,18 +109,11 @@
       border: 1px solid var(--border);
     }
 
-    button.green {
-      background: var(--accent);
-      color: #052e16;
-    }
-
+    button.green { background: var(--accent); color: #052e16; }
     button.red { background: var(--danger); }
     button.orange { background: var(--warning); color: #111827; }
 
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .row {
       display: flex;
@@ -135,10 +122,7 @@
       align-items: center;
     }
 
-    .row button {
-      flex: 1;
-      min-width: 130px;
-    }
+    .row button { flex: 1; min-width: 130px; }
 
     .pill {
       display: inline-flex;
@@ -184,9 +168,7 @@
       border-radius: 12px;
     }
 
-    .description-item {
-      display: block;
-    }
+    .description-item { display: block; }
 
     .description-name {
       font-weight: 800;
@@ -204,9 +186,7 @@
       background: rgba(34, 197, 94, 0.12);
     }
 
-    .done-speaker {
-      opacity: 0.55;
-    }
+    .done-speaker { opacity: 0.55; }
 
     .dead {
       opacity: 0.45;
@@ -258,13 +238,8 @@
       border-color: #60a5fa;
     }
 
-    .intent-choice {
-      outline: 2px solid transparent;
-    }
-
-    .intent-choice.selected {
-      outline: 2px solid #facc15;
-    }
+    .intent-choice { outline: 2px solid transparent; }
+    .intent-choice.selected { outline: 2px solid #facc15; }
 
     .log {
       max-height: 190px;
@@ -316,6 +291,12 @@
           <option value="offline">线下版：只发词 + 起始发言人 + 投票</option>
         </select>
 
+        <select id="createWordBank">
+          <option value="friendly">友好版：适合小学生 / 家庭局</option>
+          <option value="challenge">综合版：知识型 / 足球 / 热梗</option>
+          <option value="all">全部词库</option>
+        </select>
+
         <button class="green" id="createRoomBtn">创建房间</button>
       </div>
 
@@ -336,13 +317,14 @@
               <div class="phase">阶段：<span id="phaseText"></span></div>
               <div class="phase">人数配置：<span id="roomConfigText"></span></div>
               <div class="phase">模式：<span id="roomModeText"></span></div>
+              <div class="phase">词库：<span id="wordBankText"></span></div>
             </div>
             <div class="pill">你是：<span id="youNameText"></span></div>
           </div>
 
           <div id="lobbyPanel">
             <div class="notice">
-              等待玩家加入。Host 创建房间时会提前选定人数和模式。<br>
+              等待玩家加入。Host 创建房间时会提前选定人数、模式和词库。<br>
               开始后，平民看到同一个词，卧底看到相近但不同的词。
             </div>
             <div class="row" style="margin-top: 12px;">
@@ -379,6 +361,7 @@
             <div class="big-word" style="font-size: 30px;" id="startingSpeakerText">---</div>
             <div class="row">
               <button id="offlineStartVoteBtn" class="green">进入投票</button>
+              <button id="redrawStarterBtn" class="secondary">重新抽起始发言人</button>
             </div>
           </div>
 
@@ -422,6 +405,7 @@
           </div>
 
           <div id="hostControls" class="row hidden" style="margin-top: 14px;">
+            <button id="changeWordsBtn" class="orange">换一组词</button>
             <button id="resetRoomBtn" class="red">重置房间</button>
           </div>
         </div>
@@ -455,7 +439,7 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    import { wordPairs } from "./data/word-pairs.js";
+    import { wordBanks, getWordBankLabel } from "./data/word-pairs.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAT7nY6UrOwU1GD-smmqLJvXW40jgNGwks",
@@ -477,6 +461,7 @@
       createName: document.getElementById("createName"),
       createPlayerCount: document.getElementById("createPlayerCount"),
       createGameMode: document.getElementById("createGameMode"),
+      createWordBank: document.getElementById("createWordBank"),
       joinName: document.getElementById("joinName"),
       joinRoomId: document.getElementById("joinRoomId"),
       createRoomBtn: document.getElementById("createRoomBtn"),
@@ -484,6 +469,7 @@
       roomIdText: document.getElementById("roomIdText"),
       roomConfigText: document.getElementById("roomConfigText"),
       roomModeText: document.getElementById("roomModeText"),
+      wordBankText: document.getElementById("wordBankText"),
       phaseText: document.getElementById("phaseText"),
       youNameText: document.getElementById("youNameText"),
       lobbyPanel: document.getElementById("lobbyPanel"),
@@ -498,6 +484,7 @@
       offlinePanel: document.getElementById("offlinePanel"),
       startingSpeakerText: document.getElementById("startingSpeakerText"),
       offlineStartVoteBtn: document.getElementById("offlineStartVoteBtn"),
+      redrawStarterBtn: document.getElementById("redrawStarterBtn"),
       voteIntentPanel: document.getElementById("voteIntentPanel"),
       voteIntentTimer: document.getElementById("voteIntentTimer"),
       agreeCountText: document.getElementById("agreeCountText"),
@@ -515,6 +502,7 @@
       logBox: document.getElementById("logBox"),
       hostControls: document.getElementById("hostControls"),
       startGameBtn: document.getElementById("startGameBtn"),
+      changeWordsBtn: document.getElementById("changeWordsBtn"),
       resetRoomBtn: document.getElementById("resetRoomBtn"),
       copyRoomBtn: document.getElementById("copyRoomBtn"),
       voteList: document.getElementById("voteList"),
@@ -618,6 +606,95 @@
       return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     }
 
+    function getCurrentBank(room) {
+      const key = room.wordBank || "all";
+      return wordBanks[key] || wordBanks.all;
+    }
+
+    function pickWords(room) {
+      const bank = getCurrentBank(room);
+      const pair = bank[Math.floor(Math.random() * bank.length)];
+      const flip = Math.random() < 0.5;
+
+      return {
+        civilianWord: flip ? pair.spy : pair.civilian,
+        spyWord: flip ? pair.civilian : pair.spy
+      };
+    }
+
+    function makeOnlineSpeechUpdates(room, logText) {
+      const alive = alivePlayers(room);
+      const order = shuffle(alive.map(p => p.id));
+
+      return {
+        phase: "describe",
+        speechOrder: order,
+        currentSpeakerIndex: 0,
+        descriptions: null,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        votes: null,
+        voteDeadline: null,
+        startingSpeakerId: null,
+        logs: addLog(room, logText || "新一轮线上描述开始，发言顺序已随机生成")
+      };
+    }
+
+    function makeOfflineDiscussUpdates(room, logText) {
+      const alive = alivePlayers(room);
+      const starter = shuffle(alive.map(p => p.id))[0];
+
+      return {
+        phase: "offlineDiscuss",
+        startingSpeakerId: starter,
+        speechOrder: null,
+        currentSpeakerIndex: null,
+        descriptions: null,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        votes: null,
+        voteDeadline: null,
+        logs: addLog(room, logText || `线下发言开始，从 ${getName(room, starter)} 开始`)
+      };
+    }
+
+    function makeNewWordsUpdates(room, logText) {
+      const players = allPlayers(room);
+      const words = pickWords(room);
+      const spyCount = room.config?.spies || getGameConfig(players.length).spies;
+      const spies = new Set(shuffle(players).slice(0, spyCount).map(p => p.id));
+
+      const updates = {};
+
+      for (const p of players) {
+        const role = spies.has(p.id) ? "spy" : "civilian";
+        updates[`players/${p.id}/role`] = role;
+        updates[`players/${p.id}/word`] = role === "spy" ? words.spyWord : words.civilianWord;
+        updates[`players/${p.id}/alive`] = true;
+      }
+
+      updates.result = null;
+      updates.currentWords = words;
+
+      const mode = room.gameMode || "online";
+      const tempRoom = {
+        ...room,
+        players: JSON.parse(JSON.stringify(room.players || {}))
+      };
+
+      for (const p of players) {
+        tempRoom.players[p.id].alive = true;
+      }
+
+      if (mode === "offline") {
+        Object.assign(updates, makeOfflineDiscussUpdates(tempRoom, logText || "Host 更换了一组词，系统已重新抽取起始发言人"));
+      } else {
+        Object.assign(updates, makeOnlineSpeechUpdates(tempRoom, logText || "Host 更换了一组词，线上发言顺序已重新生成"));
+      }
+
+      return updates;
+    }
+
     async function createRoom() {
       const name = els.createName.value.trim();
       if (!name) return alert("请输入名字");
@@ -625,6 +702,7 @@
       const playerCount = Number(els.createPlayerCount.value || 3);
       const config = getGameConfig(playerCount);
       const gameMode = els.createGameMode.value || "online";
+      const wordBank = els.createWordBank.value || "friendly";
 
       let id = randomRoomId();
       let snap = await get(roomRef(id));
@@ -644,11 +722,12 @@
         maxPlayers: playerCount,
         config,
         gameMode,
+        wordBank,
         createdAt: serverTimestamp(),
         players: {
           [playerId]: { name, alive: true, joinedAt: Date.now() }
         },
-        logs: [{ text: `${name} 创建了 ${configText({ maxPlayers: playerCount, config })} · ${gameMode === "offline" ? "线下版" : "线上版"} 房间`, time: Date.now() }]
+        logs: [{ text: `${name} 创建了 ${configText({ maxPlayers: playerCount, config })} · ${gameMode === "offline" ? "线下版" : "线上版"} · ${getWordBankLabel(wordBank)} 房间`, time: Date.now() }]
       });
 
       enterRoom(roomId);
@@ -710,42 +789,6 @@
       });
     }
 
-    function makeOnlineSpeechUpdates(room, logText) {
-      const alive = alivePlayers(room);
-      const order = shuffle(alive.map(p => p.id));
-
-      return {
-        phase: "describe",
-        speechOrder: order,
-        currentSpeakerIndex: 0,
-        descriptions: null,
-        voteIntents: null,
-        voteIntentDeadline: null,
-        votes: null,
-        voteDeadline: null,
-        startingSpeakerId: null,
-        logs: addLog(room, logText || "新一轮线上描述开始，发言顺序已随机生成")
-      };
-    }
-
-    function makeOfflineDiscussUpdates(room, logText) {
-      const alive = alivePlayers(room);
-      const starter = shuffle(alive.map(p => p.id))[0];
-
-      return {
-        phase: "offlineDiscuss",
-        startingSpeakerId: starter,
-        speechOrder: null,
-        currentSpeakerIndex: null,
-        descriptions: null,
-        voteIntents: null,
-        voteIntentDeadline: null,
-        votes: null,
-        voteDeadline: null,
-        logs: addLog(room, logText || `线下发言开始，从 ${getName(room, starter)} 开始`)
-      };
-    }
-
     async function startGame() {
       if (!currentRoom || !isHost()) return;
 
@@ -756,37 +799,21 @@
         return alert(`当前房间设定为 ${maxPlayers} 人，需要人数到齐后才能开始。现在是 ${players.length} 人。`);
       }
 
-      const pair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
-      const flip = Math.random() < 0.5;
+      await update(roomRef(roomId), makeNewWordsUpdates(currentRoom, `第 ${currentRoom.round || 1} 局开始，系统已发放词语`));
+    }
 
-      const civilianWord = flip ? pair.spy : pair.civilian;
-      const spyWord = flip ? pair.civilian : pair.spy;
+    async function changeWords() {
+      if (!currentRoom || !isHost()) return;
+      if (currentRoom.phase === "lobby") return alert("游戏还没开始。");
 
-      const spyCount = currentRoom.config?.spies || getGameConfig(players.length).spies;
-      const spies = new Set(shuffle(players).slice(0, spyCount).map(p => p.id));
+      await update(roomRef(roomId), makeNewWordsUpdates(currentRoom, "Host 更换了一组词"));
+    }
 
-      const updates = {};
+    async function redrawStarter() {
+      if (!currentRoom || !isHost()) return;
+      if (currentRoom.phase !== "offlineDiscuss") return;
 
-      for (const p of players) {
-        const role = spies.has(p.id) ? "spy" : "civilian";
-        updates[`players/${p.id}/role`] = role;
-        updates[`players/${p.id}/word`] = role === "spy" ? spyWord : civilianWord;
-        updates[`players/${p.id}/alive`] = true;
-      }
-
-      const mode = currentRoom.gameMode || "online";
-      const tempRoom = { ...currentRoom, players: currentRoom.players };
-
-      if (mode === "offline") {
-        Object.assign(updates, makeOfflineDiscussUpdates(tempRoom, `第 ${currentRoom.round || 1} 局开始，系统已随机抽取起始发言人`));
-      } else {
-        Object.assign(updates, makeOnlineSpeechUpdates(tempRoom, `第 ${currentRoom.round || 1} 局开始，线上发言顺序已随机生成`));
-      }
-
-      updates.result = null;
-      updates.currentWords = { civilianWord, spyWord };
-
-      await update(roomRef(roomId), updates);
+      await update(roomRef(roomId), makeOfflineDiscussUpdates(currentRoom, "Host 重新抽取了起始发言人"));
     }
 
     async function submitDescription() {
@@ -801,10 +828,7 @@
       if (!text) return alert("请输入描述。");
 
       const updates = {};
-      updates[`descriptions/${playerId}`] = {
-        text,
-        time: Date.now()
-      };
+      updates[`descriptions/${playerId}`] = { text, time: Date.now() };
 
       if (idx + 1 >= order.length) {
         updates.phase = "voteIntent";
@@ -913,16 +937,13 @@
       const alive = alivePlayers(room);
       const aliveIds = alive.map(p => p.id);
       const votes = { ...(room.votes || {}) };
-
       const allVoted = aliveIds.every(id => votes[id]);
 
       if (!allVoted) {
         if (!room.voteDeadline || Date.now() < room.voteDeadline) return;
 
         for (const id of aliveIds) {
-          if (!votes[id]) {
-            votes[id] = randomVoteTarget(room, id);
-          }
+          if (!votes[id]) votes[id] = randomVoteTarget(room, id);
         }
 
         await update(roomRef(roomId), {
@@ -1066,10 +1087,12 @@
 
       const me = currentRoom.players?.[playerId];
       const mode = currentRoom.gameMode || "online";
+      const isGameActive = currentRoom.phase !== "lobby" && currentRoom.phase !== "result";
 
       els.roomIdText.textContent = currentRoom.roomId || roomId;
       els.roomConfigText.textContent = configText(currentRoom);
       els.roomModeText.textContent = modeText(currentRoom);
+      els.wordBankText.textContent = getWordBankLabel(currentRoom.wordBank || "all");
       els.phaseText.textContent = phaseName(currentRoom.phase);
       els.youNameText.textContent = me?.name || "未知";
 
@@ -1080,11 +1103,12 @@
       els.voteIntentPanel.classList.toggle("hidden", currentRoom.phase !== "voteIntent");
       els.votePanel.classList.toggle("hidden", currentRoom.phase !== "vote");
       els.resultPanel.classList.toggle("hidden", currentRoom.phase !== "result");
-      els.hostControls.classList.toggle("hidden", !isHost());
+      els.hostControls.classList.toggle("hidden", !(isHost() && isGameActive));
 
       els.startGameBtn.style.display = isHost() ? "inline-block" : "none";
       els.newRoundBtn.style.display = isHost() ? "inline-block" : "none";
       els.offlineStartVoteBtn.style.display = isHost() ? "inline-block" : "none";
+      els.redrawStarterBtn.style.display = isHost() ? "inline-block" : "none";
 
       els.myWordText.textContent = me?.word || "---";
 
@@ -1273,12 +1297,14 @@
     els.createRoomBtn.onclick = createRoom;
     els.joinRoomBtn.onclick = joinRoom;
     els.startGameBtn.onclick = startGame;
+    els.changeWordsBtn.onclick = changeWords;
     els.submitDescriptionBtn.onclick = submitDescription;
     els.agreeVoteBtn.onclick = () => selectIntent("agree");
     els.refuseVoteBtn.onclick = () => selectIntent("refuse");
     els.confirmIntentBtn.onclick = confirmIntent;
     els.cancelIntentBtn.onclick = cancelIntent;
     els.offlineStartVoteBtn.onclick = () => startFormalVote(currentRoom, "Host 发起线下投票，进入正式投票阶段");
+    els.redrawStarterBtn.onclick = redrawStarter;
     els.submitVoteBtn.onclick = submitVote;
     els.newRoundBtn.onclick = newRound;
     els.resetRoomBtn.onclick = resetRoom;
