@@ -74,7 +74,7 @@
       font-size: 20px;
     }
 
-    input, select {
+    input, select, textarea {
       width: 100%;
       padding: 12px 13px;
       border-radius: 12px;
@@ -86,7 +86,13 @@
       margin: 8px 0;
     }
 
-    input:focus, select:focus { border-color: var(--accent2); }
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.5;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: var(--accent2); }
 
     button {
       border: 0;
@@ -161,20 +167,36 @@
 
     .muted { color: var(--muted); }
 
-    .players, .speech-list {
+    .players, .speech-list, .description-list {
       display: grid;
       gap: 8px;
       margin-top: 12px;
     }
 
-    .player, .speech-item {
+    .player, .speech-item, .description-item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
+      gap: 10px;
       background: #020617;
       border: 1px solid var(--border);
       padding: 10px 12px;
       border-radius: 12px;
+    }
+
+    .description-item {
+      display: block;
+    }
+
+    .description-name {
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .description-text {
+      color: #d1d5db;
+      line-height: 1.5;
+      white-space: pre-wrap;
     }
 
     .current-speaker {
@@ -236,6 +258,14 @@
       border-color: #60a5fa;
     }
 
+    .intent-choice {
+      outline: 2px solid transparent;
+    }
+
+    .intent-choice.selected {
+      outline: 2px solid #facc15;
+    }
+
     .log {
       max-height: 190px;
       overflow: auto;
@@ -266,7 +296,7 @@
   <div class="container">
     <header>
       <h1>WordSpy</h1>
-      <div class="subtitle">传统「谁是卧底」在线房间版</div>
+      <div class="subtitle">传统「谁是卧底」在线 / 线下房间版</div>
     </header>
 
     <div id="setupView" class="grid two">
@@ -279,6 +309,11 @@
           <option value="4">4人：3平民 + 1卧底</option>
           <option value="5">5人：4平民 + 1卧底</option>
           <option value="6">6人：4平民 + 2卧底</option>
+        </select>
+
+        <select id="createGameMode">
+          <option value="online">线上版：文字描述 + 系统是否投票</option>
+          <option value="offline">线下版：只发词 + 起始发言人 + 投票</option>
         </select>
 
         <button class="green" id="createRoomBtn">创建房间</button>
@@ -300,13 +335,14 @@
               <h2 style="margin-bottom: 4px;">房间 <span id="roomIdText"></span></h2>
               <div class="phase">阶段：<span id="phaseText"></span></div>
               <div class="phase">人数配置：<span id="roomConfigText"></span></div>
+              <div class="phase">模式：<span id="roomModeText"></span></div>
             </div>
             <div class="pill">你是：<span id="youNameText"></span></div>
           </div>
 
           <div id="lobbyPanel">
             <div class="notice">
-              等待玩家加入。Host 创建房间时会提前选定人数。<br>
+              等待玩家加入。Host 创建房间时会提前选定人数和模式。<br>
               开始后，平民看到同一个词，卧底看到相近但不同的词。
             </div>
             <div class="row" style="margin-top: 12px;">
@@ -321,26 +357,50 @@
             <div class="notice">描述时不能直接说出这个词，也不要说太明显的同义词。</div>
           </div>
 
-          <div id="speechPanel" class="hidden">
-            <h2>发言顺序</h2>
+          <div id="onlineSpeechPanel" class="hidden">
+            <h2>线上发言</h2>
             <div id="speechStatus" class="notice"></div>
             <div id="speechList" class="speech-list"></div>
-            <button id="finishSpeakingBtn" class="green hidden" style="margin-top: 12px;">我说完了</button>
+
+            <div id="myDescriptionBox" class="hidden">
+              <textarea id="descriptionInput" placeholder="输入你的描述，不能直接说出你的词。"></textarea>
+              <button id="submitDescriptionBtn" class="green">提交描述</button>
+            </div>
+
+            <h2 style="margin-top: 18px;">已提交描述</h2>
+            <div id="descriptionList" class="description-list"></div>
+          </div>
+
+          <div id="offlinePanel" class="hidden">
+            <h2>线下版发言</h2>
+            <div class="notice">
+              系统只负责发词和随机起始发言人。实际发言、讨论、是否投票都在线下进行。
+            </div>
+            <div class="big-word" style="font-size: 30px;" id="startingSpeakerText">---</div>
+            <div class="row">
+              <button id="offlineStartVoteBtn" class="green">进入投票</button>
+            </div>
           </div>
 
           <div id="voteIntentPanel" class="hidden">
             <h2>是否进入投票？</h2>
             <div class="warningBox">
-              1分钟内选择。大于等于一半存活玩家同意，即进入正式投票。<br>
-              超时未选择会视为拒绝。如果同意人数不够，会重新开始新一轮描述。
+              1分钟内选择。大于等于一半存活玩家 Confirm 同意，即立刻进入正式投票。<br>
+              超时未确认会视为拒绝。如果同意人数不够，会重新开始新一轮描述。
             </div>
             <div style="margin-top: 10px;">剩余时间：<span id="voteIntentTimer" class="timer">--</span></div>
-            <div style="margin-top: 10px;">当前同意：<span id="agreeCountText">0</span> / 需要 <span id="agreeNeedText">0</span></div>
+            <div style="margin-top: 10px;">已确认同意：<span id="agreeCountText">0</span> / 需要 <span id="agreeNeedText">0</span></div>
+
             <div class="row" style="margin-top: 12px;">
-              <button id="agreeVoteBtn" class="green">Agree to vote</button>
-              <button id="refuseVoteBtn" class="red">Refuse to vote</button>
+              <button id="agreeVoteBtn" class="green intent-choice">Agree to vote</button>
+              <button id="refuseVoteBtn" class="red intent-choice">Refuse to vote</button>
+            </div>
+
+            <div class="row" style="margin-top: 10px;">
+              <button id="confirmIntentBtn" class="orange">Confirm</button>
               <button id="cancelIntentBtn" class="secondary">Cancel</button>
             </div>
+
             <div class="muted" id="myIntentText" style="margin-top: 10px;"></div>
           </div>
 
@@ -410,142 +470,146 @@
     const ROOM_ROOT = "wordspyRooms";
 
     const wordPairs = [
-  // 科技
-  { civilian: "智能手机", spy: "功能手机" },
-  { civilian: "Wi-Fi", spy: "移动数据" },
-  { civilian: "蓝牙", spy: "NFC" },
-  { civilian: "笔记本电脑", spy: "平板电脑" },
-  { civilian: "台式电脑", spy: "一体机" },
-  { civilian: "机械键盘", spy: "薄膜键盘" },
-  { civilian: "中央处理器", spy: "图形处理器" },
-  { civilian: "机械硬盘", spy: "固态硬盘" },
-  { civilian: "云存储", spy: "本地存储" },
-  { civilian: "人脸识别", spy: "指纹识别" },
-  { civilian: "4G网络", spy: "5G网络" },
-  { civilian: "虚拟现实", spy: "增强现实" },
-  { civilian: "人工智能", spy: "机器学习" },
-  { civilian: "杀毒软件", spy: "防火墙" },
-  { civilian: "浏览器", spy: "搜索引擎" },
-  { civilian: "论坛", spy: "社交媒体" },
-  { civilian: "电子墨水屏", spy: "LCD屏幕" },
-  { civilian: "智能手表", spy: "智能手环" },
-  { civilian: "快充", spy: "无线充电" },
-  { civilian: "无人机", spy: "航模" },
+      { civilian: "智能手机", spy: "功能手机" },
+      { civilian: "Wi-Fi", spy: "移动数据" },
+      { civilian: "蓝牙", spy: "NFC" },
+      { civilian: "笔记本电脑", spy: "平板电脑" },
+      { civilian: "台式电脑", spy: "一体机" },
+      { civilian: "机械键盘", spy: "薄膜键盘" },
+      { civilian: "中央处理器", spy: "图形处理器" },
+      { civilian: "机械硬盘", spy: "固态硬盘" },
+      { civilian: "云存储", spy: "本地存储" },
+      { civilian: "人脸识别", spy: "指纹识别" },
+      { civilian: "4G网络", spy: "5G网络" },
+      { civilian: "虚拟现实", spy: "增强现实" },
+      { civilian: "人工智能", spy: "机器学习" },
+      { civilian: "杀毒软件", spy: "防火墙" },
+      { civilian: "浏览器", spy: "搜索引擎" },
+      { civilian: "论坛", spy: "社交媒体" },
+      { civilian: "电子墨水屏", spy: "LCD屏幕" },
+      { civilian: "智能手表", spy: "智能手环" },
+      { civilian: "快充", spy: "无线充电" },
+      { civilian: "无人机", spy: "航模" },
 
-  // 古代文学 / 诗人 / 作家
-  { civilian: "李白", spy: "杜甫" },
-  { civilian: "白居易", spy: "元稹" },
-  { civilian: "李商隐", spy: "杜牧" },
-  { civilian: "苏轼", spy: "辛弃疾" },
-  { civilian: "李清照", spy: "柳永" },
-  { civilian: "王维", spy: "孟浩然" },
-  { civilian: "高适", spy: "岑参" },
-  { civilian: "韩愈", spy: "柳宗元" },
-  { civilian: "司马迁", spy: "司马光" },
-  { civilian: "关汉卿", spy: "马致远" },
-  { civilian: "《诗经》", spy: "《楚辞》" },
-  { civilian: "唐诗", spy: "宋词" },
-  { civilian: "豪放派", spy: "婉约派" },
-  { civilian: "王勃", spy: "杨炯" },
-  { civilian: "建安七子", spy: "竹林七贤" },
-  { civilian: "《史记》", spy: "《资治通鉴》" },
-  { civilian: "《西游记》", spy: "《封神演义》" },
-  { civilian: "《牡丹亭》", spy: "《西厢记》" },
-  { civilian: "陶渊明", spy: "谢灵运" },
-  { civilian: "贾岛", spy: "孟郊" },
+      { civilian: "李白", spy: "杜甫" },
+      { civilian: "白居易", spy: "元稹" },
+      { civilian: "李商隐", spy: "杜牧" },
+      { civilian: "苏轼", spy: "辛弃疾" },
+      { civilian: "李清照", spy: "柳永" },
+      { civilian: "王维", spy: "孟浩然" },
+      { civilian: "高适", spy: "岑参" },
+      { civilian: "韩愈", spy: "柳宗元" },
+      { civilian: "司马迁", spy: "司马光" },
+      { civilian: "关汉卿", spy: "马致远" },
+      { civilian: "《诗经》", spy: "《楚辞》" },
+      { civilian: "唐诗", spy: "宋词" },
+      { civilian: "豪放派", spy: "婉约派" },
+      { civilian: "王勃", spy: "杨炯" },
+      { civilian: "建安七子", spy: "竹林七贤" },
+      { civilian: "《史记》", spy: "《资治通鉴》" },
+      { civilian: "《西游记》", spy: "《封神演义》" },
+      { civilian: "《牡丹亭》", spy: "《西厢记》" },
+      { civilian: "陶渊明", spy: "谢灵运" },
+      { civilian: "贾岛", spy: "孟郊" },
 
-  // 教育
-  { civilian: "小学", spy: "初中" },
-  { civilian: "高中", spy: "大学" },
-  { civilian: "文科", spy: "理科" },
-  { civilian: "本科", spy: "专科" },
-  { civilian: "公立学校", spy: "私立学校" },
-  { civilian: "班主任", spy: "辅导员" },
-  { civilian: "期末考试", spy: "期中考试" },
-  { civilian: "模拟考试", spy: "联考" },
-  { civilian: "必修课", spy: "选修课" },
-  { civilian: "学分", spy: "绩点" },
-  { civilian: "素质教育", spy: "应试教育" },
-  { civilian: "教材", spy: "参考书" },
-  { civilian: "教案", spy: "课件" },
-  { civilian: "毕业论文", spy: "毕业设计" },
-  { civilian: "实习", spy: "见习" },
-  { civilian: "全日制", spy: "非全日制" },
-  { civilian: "学历", spy: "学位" },
-  { civilian: "保送生", spy: "特长生" },
-  { civilian: "重点班", spy: "普通班" },
-  { civilian: "教育部门", spy: "考试院" },
+      { civilian: "小学", spy: "初中" },
+      { civilian: "高中", spy: "大学" },
+      { civilian: "文科", spy: "理科" },
+      { civilian: "本科", spy: "专科" },
+      { civilian: "公立学校", spy: "私立学校" },
+      { civilian: "班主任", spy: "辅导员" },
+      { civilian: "期末考试", spy: "期中考试" },
+      { civilian: "模拟考试", spy: "联考" },
+      { civilian: "必修课", spy: "选修课" },
+      { civilian: "学分", spy: "绩点" },
+      { civilian: "素质教育", spy: "应试教育" },
+      { civilian: "教材", spy: "参考书" },
+      { civilian: "教案", spy: "课件" },
+      { civilian: "毕业论文", spy: "毕业设计" },
+      { civilian: "实习", spy: "见习" },
+      { civilian: "全日制", spy: "非全日制" },
+      { civilian: "学历", spy: "学位" },
+      { civilian: "保送生", spy: "特长生" },
+      { civilian: "重点班", spy: "普通班" },
+      { civilian: "教育部门", spy: "考试院" },
 
-  // 历史
-  { civilian: "鸦片战争", spy: "甲午战争" },
-  { civilian: "辛亥革命", spy: "戊戌变法" },
-  { civilian: "新文化运动", spy: "五四运动" },
-  { civilian: "文艺复兴", spy: "启蒙运动" },
-  { civilian: "第一次世界大战", spy: "第二次世界大战" },
-  { civilian: "秦始皇", spy: "汉武帝" },
-  { civilian: "唐太宗", spy: "唐玄宗" },
-  { civilian: "宋太祖", spy: "宋太宗" },
-  { civilian: "明太祖", spy: "明成祖" },
-  { civilian: "成吉思汗", spy: "忽必烈" },
-  { civilian: "张骞", spy: "班超" },
-  { civilian: "岳飞", spy: "文天祥" },
-  { civilian: "贞观之治", spy: "开元盛世" },
-  { civilian: "文景之治", spy: "光武中兴" },
-  { civilian: "百家争鸣", spy: "稷下学宫" },
-  { civilian: "商鞅变法", spy: "王安石变法" },
-  { civilian: "靖康之变", spy: "土木之变" },
-  { civilian: "丝绸之路", spy: "茶马古道" },
-  { civilian: "新航路开辟", spy: "地理大发现" },
-  { civilian: "美国独立战争", spy: "法国大革命" },
+      { civilian: "鸦片战争", spy: "甲午战争" },
+      { civilian: "辛亥革命", spy: "戊戌变法" },
+      { civilian: "新文化运动", spy: "五四运动" },
+      { civilian: "文艺复兴", spy: "启蒙运动" },
+      { civilian: "第一次世界大战", spy: "第二次世界大战" },
+      { civilian: "秦始皇", spy: "汉武帝" },
+      { civilian: "唐太宗", spy: "唐玄宗" },
+      { civilian: "宋太祖", spy: "宋太宗" },
+      { civilian: "明太祖", spy: "明成祖" },
+      { civilian: "成吉思汗", spy: "忽必烈" },
+      { civilian: "张骞", spy: "班超" },
+      { civilian: "岳飞", spy: "文天祥" },
+      { civilian: "贞观之治", spy: "开元盛世" },
+      { civilian: "文景之治", spy: "光武中兴" },
+      { civilian: "百家争鸣", spy: "稷下学宫" },
+      { civilian: "商鞅变法", spy: "王安石变法" },
+      { civilian: "靖康之变", spy: "土木之变" },
+      { civilian: "丝绸之路", spy: "茶马古道" },
+      { civilian: "新航路开辟", spy: "地理大发现" },
+      { civilian: "美国独立战争", spy: "法国大革命" },
 
-  // 日常生活
-  { civilian: "雨伞", spy: "雨衣" },
-  { civilian: "自行车", spy: "电动车" },
-  { civilian: "冰箱", spy: "冰柜" },
-  { civilian: "空调", spy: "电风扇" },
-  { civilian: "电饭煲", spy: "电压力锅" },
-  { civilian: "牙刷", spy: "电动牙刷" },
-  { civilian: "浴巾", spy: "毛巾" },
-  { civilian: "水杯", spy: "保温杯" },
-  { civilian: "沙发", spy: "椅子" },
-  { civilian: "牛仔裤", spy: "休闲裤" },
-  { civilian: "运动鞋", spy: "休闲鞋" },
-  { civilian: "手机", spy: "座机" },
-  { civilian: "闹钟", spy: "计时器" },
-  { civilian: "茶叶", spy: "咖啡" },
-  { civilian: "牛奶", spy: "酸奶" },
-  { civilian: "面包", spy: "馒头" },
-  { civilian: "矿泉水", spy: "纯净水" },
-  { civilian: "洗发水", spy: "护发素" },
-  { civilian: "口红", spy: "唇釉" },
-  { civilian: "笔记本", spy: "日记本" }
-];
-    
+      { civilian: "雨伞", spy: "雨衣" },
+      { civilian: "自行车", spy: "电动车" },
+      { civilian: "冰箱", spy: "冰柜" },
+      { civilian: "空调", spy: "电风扇" },
+      { civilian: "电饭煲", spy: "电压力锅" },
+      { civilian: "牙刷", spy: "电动牙刷" },
+      { civilian: "浴巾", spy: "毛巾" },
+      { civilian: "水杯", spy: "保温杯" },
+      { civilian: "沙发", spy: "椅子" },
+      { civilian: "牛仔裤", spy: "休闲裤" },
+      { civilian: "运动鞋", spy: "休闲鞋" },
+      { civilian: "手机", spy: "座机" },
+      { civilian: "闹钟", spy: "计时器" },
+      { civilian: "茶叶", spy: "咖啡" },
+      { civilian: "牛奶", spy: "酸奶" },
+      { civilian: "面包", spy: "馒头" },
+      { civilian: "矿泉水", spy: "纯净水" },
+      { civilian: "洗发水", spy: "护发素" },
+      { civilian: "口红", spy: "唇釉" },
+      { civilian: "笔记本", spy: "日记本" }
+    ];
+
     const els = {
       setupView: document.getElementById("setupView"),
       gameView: document.getElementById("gameView"),
       createName: document.getElementById("createName"),
       createPlayerCount: document.getElementById("createPlayerCount"),
+      createGameMode: document.getElementById("createGameMode"),
       joinName: document.getElementById("joinName"),
       joinRoomId: document.getElementById("joinRoomId"),
       createRoomBtn: document.getElementById("createRoomBtn"),
       joinRoomBtn: document.getElementById("joinRoomBtn"),
       roomIdText: document.getElementById("roomIdText"),
       roomConfigText: document.getElementById("roomConfigText"),
+      roomModeText: document.getElementById("roomModeText"),
       phaseText: document.getElementById("phaseText"),
       youNameText: document.getElementById("youNameText"),
       lobbyPanel: document.getElementById("lobbyPanel"),
       wordPanel: document.getElementById("wordPanel"),
-      speechPanel: document.getElementById("speechPanel"),
+      onlineSpeechPanel: document.getElementById("onlineSpeechPanel"),
       speechStatus: document.getElementById("speechStatus"),
       speechList: document.getElementById("speechList"),
-      finishSpeakingBtn: document.getElementById("finishSpeakingBtn"),
+      myDescriptionBox: document.getElementById("myDescriptionBox"),
+      descriptionInput: document.getElementById("descriptionInput"),
+      submitDescriptionBtn: document.getElementById("submitDescriptionBtn"),
+      descriptionList: document.getElementById("descriptionList"),
+      offlinePanel: document.getElementById("offlinePanel"),
+      startingSpeakerText: document.getElementById("startingSpeakerText"),
+      offlineStartVoteBtn: document.getElementById("offlineStartVoteBtn"),
       voteIntentPanel: document.getElementById("voteIntentPanel"),
       voteIntentTimer: document.getElementById("voteIntentTimer"),
       agreeCountText: document.getElementById("agreeCountText"),
       agreeNeedText: document.getElementById("agreeNeedText"),
       agreeVoteBtn: document.getElementById("agreeVoteBtn"),
       refuseVoteBtn: document.getElementById("refuseVoteBtn"),
+      confirmIntentBtn: document.getElementById("confirmIntentBtn"),
       cancelIntentBtn: document.getElementById("cancelIntentBtn"),
       myIntentText: document.getElementById("myIntentText"),
       votePanel: document.getElementById("votePanel"),
@@ -570,6 +634,7 @@
     let currentRoom = null;
     let unsubscribe = null;
     let selectedVote = null;
+    let pendingIntent = null;
 
     if (!playerId) {
       playerId = "p_" + Math.random().toString(36).slice(2, 10);
@@ -615,7 +680,7 @@
     function addLog(room, text) {
       const logs = room.logs || [];
       logs.push({ text, time: Date.now() });
-      return logs.slice(-60);
+      return logs.slice(-80);
     }
 
     function getGameConfig(playerCount) {
@@ -634,10 +699,15 @@
       return `${maxPlayers}人：${config.civilians}平民 + ${config.spies}卧底`;
     }
 
+    function modeText(room) {
+      return room.gameMode === "offline" ? "线下版" : "线上版";
+    }
+
     function phaseName(phase) {
       return {
         lobby: "等待开始",
-        describe: "描述阶段",
+        describe: "线上描述阶段",
+        offlineDiscuss: "线下发言阶段",
         voteIntent: "是否投票",
         vote: "投票阶段",
         result: "游戏结束"
@@ -648,13 +718,9 @@
       return room.players?.[id]?.name || "未知玩家";
     }
 
-    function now() {
-      return Date.now();
-    }
-
     function secondsLeft(deadline) {
       if (!deadline) return "--";
-      return Math.max(0, Math.ceil((deadline - now()) / 1000));
+      return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     }
 
     async function createRoom() {
@@ -663,6 +729,7 @@
 
       const playerCount = Number(els.createPlayerCount.value || 3);
       const config = getGameConfig(playerCount);
+      const gameMode = els.createGameMode.value || "online";
 
       let id = randomRoomId();
       let snap = await get(roomRef(id));
@@ -681,11 +748,12 @@
         round: 1,
         maxPlayers: playerCount,
         config,
+        gameMode,
         createdAt: serverTimestamp(),
         players: {
           [playerId]: { name, alive: true, joinedAt: Date.now() }
         },
-        logs: [{ text: `${name} 创建了 ${configText({ maxPlayers: playerCount, config })} 房间`, time: Date.now() }]
+        logs: [{ text: `${name} 创建了 ${configText({ maxPlayers: playerCount, config })} · ${gameMode === "offline" ? "线下版" : "线上版"} 房间`, time: Date.now() }]
       });
 
       enterRoom(roomId);
@@ -741,12 +809,13 @@
           location.href = location.pathname;
           return;
         }
+
         currentRoom = snap.val();
         render();
       });
     }
 
-    function makeSpeechUpdates(room, logText) {
+    function makeOnlineSpeechUpdates(room, logText) {
       const alive = alivePlayers(room);
       const order = shuffle(alive.map(p => p.id));
 
@@ -754,11 +823,31 @@
         phase: "describe",
         speechOrder: order,
         currentSpeakerIndex: 0,
+        descriptions: null,
         voteIntents: null,
         voteIntentDeadline: null,
         votes: null,
         voteDeadline: null,
-        logs: addLog(room, logText || "新一轮描述开始，发言顺序已随机生成")
+        startingSpeakerId: null,
+        logs: addLog(room, logText || "新一轮线上描述开始，发言顺序已随机生成")
+      };
+    }
+
+    function makeOfflineDiscussUpdates(room, logText) {
+      const alive = alivePlayers(room);
+      const starter = shuffle(alive.map(p => p.id))[0];
+
+      return {
+        phase: "offlineDiscuss",
+        startingSpeakerId: starter,
+        speechOrder: null,
+        currentSpeakerIndex: null,
+        descriptions: null,
+        voteIntents: null,
+        voteIntentDeadline: null,
+        votes: null,
+        voteDeadline: null,
+        logs: addLog(room, logText || `线下发言开始，从 ${getName(room, starter)} 开始`)
       };
     }
 
@@ -790,14 +879,22 @@
         updates[`players/${p.id}/alive`] = true;
       }
 
-      Object.assign(updates, makeSpeechUpdates(currentRoom, `第 ${currentRoom.round || 1} 局开始，发言顺序已随机生成`));
+      const mode = currentRoom.gameMode || "online";
+      const tempRoom = { ...currentRoom, players: currentRoom.players };
+
+      if (mode === "offline") {
+        Object.assign(updates, makeOfflineDiscussUpdates(tempRoom, `第 ${currentRoom.round || 1} 局开始，系统已随机抽取起始发言人`));
+      } else {
+        Object.assign(updates, makeOnlineSpeechUpdates(tempRoom, `第 ${currentRoom.round || 1} 局开始，线上发言顺序已随机生成`));
+      }
+
       updates.result = null;
       updates.currentWords = { civilianWord, spyWord };
 
       await update(roomRef(roomId), updates);
     }
 
-    async function finishSpeaking() {
+    async function submitDescription() {
       if (!currentRoom || currentRoom.phase !== "describe") return;
 
       const order = currentRoom.speechOrder || [];
@@ -805,41 +902,55 @@
 
       if (order[idx] !== playerId) return alert("还没轮到你发言。");
 
+      const text = els.descriptionInput.value.trim();
+      if (!text) return alert("请输入描述。");
+
+      const updates = {};
+      updates[`descriptions/${playerId}`] = {
+        text,
+        time: Date.now()
+      };
+
       if (idx + 1 >= order.length) {
-        await startVoteIntent();
+        updates.phase = "voteIntent";
+        updates.voteIntents = null;
+        updates.voteIntentDeadline = Date.now() + 60 * 1000;
+        updates.logs = addLog(currentRoom, `${getName(currentRoom, playerId)} 提交描述。全员描述结束，进入是否投票阶段`);
       } else {
-        await update(roomRef(roomId), {
-          currentSpeakerIndex: idx + 1,
-          logs: addLog(currentRoom, `${getName(currentRoom, playerId)} 发言结束，轮到 ${getName(currentRoom, order[idx + 1])}`)
-        });
+        updates.currentSpeakerIndex = idx + 1;
+        updates.logs = addLog(currentRoom, `${getName(currentRoom, playerId)} 提交描述，轮到 ${getName(currentRoom, order[idx + 1])}`);
       }
+
+      els.descriptionInput.value = "";
+      await update(roomRef(roomId), updates);
     }
 
-    async function startVoteIntent() {
-      const deadline = Date.now() + 60 * 1000;
+    function selectIntent(choice) {
+      pendingIntent = choice;
+      renderVoteIntent();
+    }
+
+    async function confirmIntent() {
+      if (!currentRoom || currentRoom.phase !== "voteIntent") return;
+      if (!pendingIntent) return alert("请先选择 Agree 或 Refuse。");
 
       await update(roomRef(roomId), {
-        phase: "voteIntent",
-        voteIntents: null,
-        voteIntentDeadline: deadline,
-        logs: addLog(currentRoom, "全员发言结束，进入是否投票阶段")
+        [`voteIntents/${playerId}`]: pendingIntent
       });
+
+      setTimeout(checkVoteIntent, 300);
     }
 
-    async function setVoteIntent(choice) {
-      if (!currentRoom || currentRoom.phase !== "voteIntent") return;
+    async function cancelIntent() {
+      pendingIntent = null;
 
-      if (choice === "cancel") {
+      if (currentRoom && currentRoom.phase === "voteIntent") {
         await update(roomRef(roomId), {
           [`voteIntents/${playerId}`]: null
         });
-      } else {
-        await update(roomRef(roomId), {
-          [`voteIntents/${playerId}`]: choice
-        });
       }
 
-      setTimeout(checkVoteIntent, 300);
+      renderVoteIntent();
     }
 
     async function checkVoteIntent() {
@@ -855,21 +966,25 @@
       const agreeCount = alive.filter(p => intents[p.id] === "agree").length;
 
       if (agreeCount >= need) {
-        await startFormalVote(room, `已有 ${agreeCount}/${alive.length} 人同意投票，进入正式投票`);
+        await startFormalVote(room, `已有 ${agreeCount}/${alive.length} 人确认同意投票，进入正式投票`);
         return;
       }
 
       if (room.voteIntentDeadline && Date.now() >= room.voteIntentDeadline) {
-        await update(roomRef(roomId), makeSpeechUpdates(room, `同意投票人数不足（${agreeCount}/${need}），重新开始新一轮描述`));
+        await update(roomRef(roomId), makeOnlineSpeechUpdates(room, `同意投票人数不足（${agreeCount}/${need}），重新开始新一轮线上描述`));
       }
     }
 
-    async function startFormalVote(room, logText) {
+    async function startFormalVote(room = currentRoom, logText = "进入正式投票阶段") {
+      if (!room) return;
+
       await update(roomRef(roomId), {
         phase: "vote",
         votes: null,
         voteDeadline: Date.now() + 60 * 1000,
-        logs: addLog(room, logText || "进入正式投票阶段")
+        voteIntents: null,
+        voteIntentDeadline: null,
+        logs: addLog(room, logText)
       });
     }
 
@@ -931,7 +1046,11 @@
       const validVotes = Object.values(votes).filter(Boolean);
 
       if (validVotes.length === 0) {
-        await update(roomRef(roomId), makeSpeechUpdates(room, "没有有效投票，重新开始新一轮描述"));
+        const updates = room.gameMode === "offline"
+          ? makeOfflineDiscussUpdates(room, "没有有效投票，回到线下讨论")
+          : makeOnlineSpeechUpdates(room, "没有有效投票，重新开始新一轮线上描述");
+
+        await update(roomRef(roomId), updates);
         return;
       }
 
@@ -961,31 +1080,28 @@
       const updates = {};
       updates[`players/${eliminatedId}/alive`] = false;
 
-      let phase = "describe";
-      let result = null;
       let logText = `${eliminated.name} 被投票淘汰`;
 
       if (spyAlive === 0) {
-        phase = "result";
-        result = { winner: "civilian", text: "所有卧底都被淘汰，平民胜利！" };
-        logText += "。平民胜利。";
-        updates.phase = phase;
-        updates.result = result;
+        updates.phase = "result";
+        updates.result = { winner: "civilian", text: "所有卧底都被淘汰，平民胜利！" };
         updates.votes = null;
         updates.voteDeadline = null;
-        updates.logs = addLog(room, logText);
+        updates.logs = addLog(room, logText + "。平民胜利。");
       } else if (spyAlive >= civilianAlive) {
-        phase = "result";
-        result = { winner: "spy", text: "卧底人数已经不少于平民，卧底胜利！" };
-        logText += "。卧底胜利。";
-        updates.phase = phase;
-        updates.result = result;
+        updates.phase = "result";
+        updates.result = { winner: "spy", text: "卧底人数已经不少于平民，卧底胜利！" };
         updates.votes = null;
         updates.voteDeadline = null;
-        updates.logs = addLog(room, logText);
+        updates.logs = addLog(room, logText + "。卧底胜利。");
       } else {
         const tempRoom = { ...room, players: newPlayers };
-        Object.assign(updates, makeSpeechUpdates(tempRoom, logText + "。游戏继续，新一轮描述开始"));
+
+        if (room.gameMode === "offline") {
+          Object.assign(updates, makeOfflineDiscussUpdates(tempRoom, logText + "。游戏继续，系统重新抽取起始发言人"));
+        } else {
+          Object.assign(updates, makeOnlineSpeechUpdates(tempRoom, logText + "。游戏继续，新一轮线上描述开始"));
+        }
       }
 
       await update(roomRef(roomId), updates);
@@ -1004,6 +1120,8 @@
         voteIntentDeadline: null,
         speechOrder: null,
         currentSpeakerIndex: null,
+        descriptions: null,
+        startingSpeakerId: null,
         result: null,
         currentWords: null,
         logs: addLog(currentRoom, "准备开始新一局")
@@ -1032,6 +1150,8 @@
         voteIntentDeadline: null,
         speechOrder: null,
         currentSpeakerIndex: null,
+        descriptions: null,
+        startingSpeakerId: null,
         result: null,
         currentWords: null,
         logs: addLog(currentRoom, "房间已重置")
@@ -1050,15 +1170,18 @@
       if (!currentRoom) return;
 
       const me = currentRoom.players?.[playerId];
+      const mode = currentRoom.gameMode || "online";
 
       els.roomIdText.textContent = currentRoom.roomId || roomId;
       els.roomConfigText.textContent = configText(currentRoom);
+      els.roomModeText.textContent = modeText(currentRoom);
       els.phaseText.textContent = phaseName(currentRoom.phase);
       els.youNameText.textContent = me?.name || "未知";
 
       els.lobbyPanel.classList.toggle("hidden", currentRoom.phase !== "lobby");
-      els.wordPanel.classList.toggle("hidden", !["describe", "voteIntent", "vote"].includes(currentRoom.phase));
-      els.speechPanel.classList.toggle("hidden", currentRoom.phase !== "describe");
+      els.wordPanel.classList.toggle("hidden", !["describe", "voteIntent", "vote", "offlineDiscuss"].includes(currentRoom.phase));
+      els.onlineSpeechPanel.classList.toggle("hidden", !(currentRoom.phase === "describe" && mode === "online"));
+      els.offlinePanel.classList.toggle("hidden", !(currentRoom.phase === "offlineDiscuss" && mode === "offline"));
       els.voteIntentPanel.classList.toggle("hidden", currentRoom.phase !== "voteIntent");
       els.votePanel.classList.toggle("hidden", currentRoom.phase !== "vote");
       els.resultPanel.classList.toggle("hidden", currentRoom.phase !== "result");
@@ -1066,11 +1189,13 @@
 
       els.startGameBtn.style.display = isHost() ? "inline-block" : "none";
       els.newRoundBtn.style.display = isHost() ? "inline-block" : "none";
+      els.offlineStartVoteBtn.style.display = isHost() ? "inline-block" : "none";
 
       els.myWordText.textContent = me?.word || "---";
 
       renderPlayers();
-      renderSpeech();
+      renderOnlineSpeech();
+      renderOfflinePanel();
       renderVoteIntent();
       renderVotes();
       renderResult();
@@ -1102,12 +1227,13 @@
       }
     }
 
-    function renderSpeech() {
+    function renderOnlineSpeech() {
       if (currentRoom.phase !== "describe") return;
 
       const order = currentRoom.speechOrder || [];
       const idx = currentRoom.currentSpeakerIndex || 0;
       const currentSpeakerId = order[idx];
+      const descriptions = currentRoom.descriptions || {};
 
       els.speechStatus.innerHTML = currentSpeakerId
         ? `当前发言：<strong>${escapeHtml(getName(currentRoom, currentSpeakerId))}</strong>`
@@ -1123,13 +1249,37 @@
 
         div.innerHTML = `
           <span>${i + 1}. ${escapeHtml(getName(currentRoom, id))}</span>
-          <span class="muted">${i < idx ? "已发言" : i === idx ? "正在发言" : "等待"}</span>
+          <span class="muted">${i < idx ? "已提交" : i === idx ? "正在描述" : "等待"}</span>
         `;
 
         els.speechList.appendChild(div);
       });
 
-      els.finishSpeakingBtn.classList.toggle("hidden", currentSpeakerId !== playerId);
+      els.myDescriptionBox.classList.toggle("hidden", currentSpeakerId !== playerId);
+
+      els.descriptionList.innerHTML = "";
+
+      order.forEach(id => {
+        if (!descriptions[id]) return;
+
+        const div = document.createElement("div");
+        div.className = "description-item";
+        div.innerHTML = `
+          <div class="description-name">${escapeHtml(getName(currentRoom, id))}</div>
+          <div class="description-text">${escapeHtml(descriptions[id].text)}</div>
+        `;
+
+        els.descriptionList.appendChild(div);
+      });
+    }
+
+    function renderOfflinePanel() {
+      if (currentRoom.phase !== "offlineDiscuss") return;
+
+      const starter = currentRoom.startingSpeakerId;
+      els.startingSpeakerText.textContent = starter
+        ? `从 ${getName(currentRoom, starter)} 开始发言`
+        : "等待系统抽取起始发言人";
     }
 
     function renderVoteIntent() {
@@ -1145,9 +1295,14 @@
       els.agreeCountText.textContent = agreeCount;
       els.agreeNeedText.textContent = need;
 
+      els.agreeVoteBtn.classList.toggle("selected", pendingIntent === "agree");
+      els.refuseVoteBtn.classList.toggle("selected", pendingIntent === "refuse");
+
       els.myIntentText.textContent = myIntent
-        ? `你的选择：${myIntent === "agree" ? "Agree to vote" : "Refuse to vote"}`
-        : "你还没有选择。";
+        ? `你已确认：${myIntent === "agree" ? "Agree to vote" : "Refuse to vote"}`
+        : pendingIntent
+          ? `待确认：${pendingIntent === "agree" ? "Agree to vote" : "Refuse to vote"}`
+          : "你还没有选择。";
     }
 
     function renderVotes() {
@@ -1223,10 +1378,12 @@
     els.createRoomBtn.onclick = createRoom;
     els.joinRoomBtn.onclick = joinRoom;
     els.startGameBtn.onclick = startGame;
-    els.finishSpeakingBtn.onclick = finishSpeaking;
-    els.agreeVoteBtn.onclick = () => setVoteIntent("agree");
-    els.refuseVoteBtn.onclick = () => setVoteIntent("refuse");
-    els.cancelIntentBtn.onclick = () => setVoteIntent("cancel");
+    els.submitDescriptionBtn.onclick = submitDescription;
+    els.agreeVoteBtn.onclick = () => selectIntent("agree");
+    els.refuseVoteBtn.onclick = () => selectIntent("refuse");
+    els.confirmIntentBtn.onclick = confirmIntent;
+    els.cancelIntentBtn.onclick = cancelIntent;
+    els.offlineStartVoteBtn.onclick = () => startFormalVote(currentRoom, "Host 发起线下投票，进入正式投票阶段");
     els.submitVoteBtn.onclick = submitVote;
     els.newRoundBtn.onclick = newRound;
     els.resetRoomBtn.onclick = resetRoom;
